@@ -987,7 +987,7 @@ function renderIngresos(){
 function renderSummary(){
   const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
   const fam=vis.filter(e=>e.owner==='familiar');
-  const ces=vis.filter(e=>e.owner==='cesar'&&e.id!==106);
+  const ces=vis.filter(e=>e.owner==='cesar'); // incluye IVA (id 106) como gasto normal
   const tF=fam.reduce((s,e)=>s+mAmt(e),0), pF=fam.reduce((s,e)=>s+paidOf(e,curYear,curMonth),0);
   const tC=ces.reduce((s,e)=>s+mAmt(e),0), pC=ces.reduce((s,e)=>s+paidOf(e,curYear,curMonth),0);
   const tot=tF+tC, pag=pF+pC, pct=tot?Math.round(pag/tot*100):0;
@@ -1006,7 +1006,7 @@ function renderSummary(){
 function renderResumen(){
   const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
   const tF=vis.filter(e=>e.owner==='familiar').reduce((s,e)=>s+mAmt(e),0);
-  const tC=vis.filter(e=>e.owner==='cesar'&&e.id!==106).reduce((s,e)=>s+mAmt(e),0);
+  const tC=vis.filter(e=>e.owner==='cesar').reduce((s,e)=>s+mAmt(e),0); // incluye IVA (id 106) como gasto normal
   let pagCesar=0,pagAdri=0,pagExtra=0;
   vis.forEach(e=>{(e.payments[`${curYear}-${curMonth}`]||[]).forEach(p=>{
     if(p.extra) pagExtra+=p.amount;
@@ -1014,7 +1014,7 @@ function renderResumen(){
     else pagCesar+=p.amount;
   });});
   const pag=pagCesar+pagAdri;
-  const extraTotal=[...vis.filter(e=>e.owner==='familiar'),...vis.filter(e=>e.owner==='cesar'&&e.id!==106)].reduce((s,e)=>s+extraPaidOf(e,curYear,curMonth),0);
+  const extraTotal=[...vis.filter(e=>e.owner==='familiar'),...vis.filter(e=>e.owner==='cesar')].reduce((s,e)=>s+extraPaidOf(e,curYear,curMonth),0);
   const{neto,ivaNeto}=calcIng(), disp=neto-tF-tC+extraTotal;
   document.getElementById('resumen-content').innerHTML=`
     <div class="resumen">
@@ -1035,8 +1035,8 @@ function renderResumen(){
       <div class="res-section-title">Desglose</div>
       <div class="res-row"><span style="color:var(--text2)">Fijos familiar</span><span>${fmt(vis.filter(e=>e.owner==='familiar'&&e.type==='fijo').reduce((s,e)=>s+mAmt(e),0))}</span></div>
       <div class="res-row"><span style="color:var(--text2)">Variables familiar</span><span>${fmt(vis.filter(e=>e.owner==='familiar'&&e.type==='var').reduce((s,e)=>s+mAmt(e),0))}</span></div>
-      <div class="res-row"><span style="color:var(--text2)">Personales César (sin IVA)</span><span>${fmt(tC)}</span></div>
-      <div class="res-row"><span style="color:var(--text2)">IVA ya descontado del ingreso neto</span><span style="color:var(--red)">− ${fmt(ivaNeto)}</span></div>
+      <div class="res-row"><span style="color:var(--text2)">Personales César (incl. IVA)</span><span>${fmt(tC)}</span></div>
+      <div class="res-row"><span style="color:var(--text2)">De los cuales, IVA neto a pagar</span><span style="color:var(--red)">${fmt(ivaNeto)}</span></div>
     </div>`;
 }
 
