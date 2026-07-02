@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tracker financiero</title>
+<style>
+  :root {
+    --bg:#0F1117;--surface:#1A1D27;--surface2:#22263A;--border:#2E3248;--border2:#3D4263;
+    --text:#E8EAF6;--text2:#9196B3;--text3:#5C6080;
+    --green:#34D399;--green-bg:#0D2E22;--green-border:#1A5C40;
+    --red:#F87171;--red-bg:#2D1515;--red-border:#5C2A2A;
+    --yellow:#FCD34D;--yellow-bg:#2D2510;--yellow-border:#5C4A1A;
+    --blue:#60A5FA;--blue-bg:#0D1F3C;--blue-border:#1E3F7A;
+    --purple:#A78BFA;--purple-bg:#1A1030;
+    --radius:10px;--radius-sm:6px;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
+  .container{max-width:780px;margin:0 auto;padding:24px 16px 80px}
+
+  /* Header */
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+  .header-left h1{font-size:22px;font-weight:600;letter-spacing:-.5px}
+  .header-left p{font-size:13px;color:var(--text2);margin-top:2px}
+  .header-right{display:flex;align-items:center;gap:8px}
+  .month-nav{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 8px}
+  .month-nav button{background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:0 4px;line-height:1}
+  .month-nav button:hover{color:var(--text)}
+  .month-label{font-size:13px;font-weight:600;color:var(--blue);min-width:80px;text-align:center}
+  .btn-reset{background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text3);font-size:11px;cursor:pointer}
+  .btn-reset:hover{color:var(--red);border-color:var(--red-border)}
+
+  /* Summary cards */
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+  @media(min-width:500px){.cards{grid-template-columns:repeat(4,1fr)}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+  .card-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .card-value{font-size:18px;font-weight:600;line-height:1.2}
+  .card-sub{font-size:11px;color:var(--text3);margin-top:3px}
+  .cv-green{color:var(--green)}.cv-red{color:var(--red)}.cv-blue{color:var(--blue)}.cv-purple{color:var(--purple)}
+
+  /* Tabs */
+  .tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:4px}
+  .tab{flex:1;text-align:center;padding:8px 4px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:none;transition:all .15s}
+  .tab.active{background:var(--surface2);color:var(--text)}
+  .tab-panel{display:none}.tab-panel.active{display:block}
+
+  /* Section */
+  .section{margin-bottom:20px}
+  .section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .section-title{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--text2)}
+  .badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+  .badge-fijo{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+  .badge-var{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
+  .badge-puntual{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+  .add-btn{display:flex;align-items:center;gap:5px;background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text2);font-size:12px;cursor:pointer;transition:all .15s}
+  .add-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+  /* Expense card — swipe to delete */
+  .expense-list{display:flex;flex-direction:column;gap:6px}
+  .exp-wrap{position:relative;border-radius:var(--radius)}
+  .exp-del-bg{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red-bg);display:flex;align-items:center;justify-content:center;color:var(--red);font-size:18px;cursor:pointer;z-index:0;opacity:0;pointer-events:none;transition:opacity .15s;border-radius:var(--radius)}
+  .exp-wrap.swiped .exp-del-bg{opacity:1;pointer-events:auto}
+  .exp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:transform .25s ease,border-color .15s;position:relative;will-change:transform;z-index:1}
+  .exp-card:hover{border-color:var(--border2)}
+  .exp-card.completed{opacity:.5}
+  .exp-card.swiped{transform:translateX(-80px)}
+  .exp-main{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:11px 12px}
+  .exp-info{min-width:0}
+  .exp-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .exp-meta{font-size:10px;color:var(--text3);margin-top:2px;display:flex;gap:6px}
+  .exp-toggle{background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:3px 8px;color:var(--text2);font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s}
+  .exp-toggle:hover{border-color:var(--blue);color:var(--blue)}
+  .exp-amounts{text-align:right;min-width:100px}
+  .exp-total{font-size:13px;font-weight:600}
+  .exp-paid-lbl{font-size:11px;color:var(--text3);margin-top:1px}
+  .amt-input-fmt{font-size:13px;font-weight:600;width:130px;text-align:right;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:var(--radius-sm);padding:3px 7px;color:var(--yellow);font-family:var(--font)}
+  .amt-input-fmt:focus{outline:none;border-color:var(--yellow)}
+
+  /* Duration badge */
+  .dur-badge{font-size:10px;padding:1px 6px;border-radius:10px;cursor:pointer;border:1px solid var(--border2);color:var(--text3);white-space:nowrap}
+  .dur-badge:hover{border-color:var(--blue);color:var(--blue)}
+  .dur-badge.siempre{border-color:var(--green-border);color:var(--green)}
+  .dur-badge.meses{border-color:var(--yellow-border);color:var(--yellow)}
+  .dur-badge.solo{border-color:var(--red-border);color:var(--red)}
+
+  /* Progress */
+  .exp-progress{padding:0 12px 10px}
+  .pbar{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+  .pfill{height:100%;border-radius:2px;background:var(--blue);transition:width .3s}
+  .pfill.done{background:var(--green)}
+  .plabels{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:3px}
+
+  /* Detail panel */
+  .detail{border-top:1px solid var(--border);padding:10px 12px;display:none;background:var(--surface2)}
+  .detail.open{display:block}
+  .pay-list{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+  .pay-item{display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--surface);border-radius:var(--radius-sm);font-size:12px}
+  .pay-date{color:var(--text3);min-width:36px}
+  .pay-amt{font-weight:600;color:var(--green);min-width:100px;text-align:right}
+  .pay-note{color:var(--text2);flex:1}
+  .pay-del{background:none;border:none;cursor:pointer;color:var(--text3);margin-left:auto;font-size:13px}
+  .pay-del:hover{color:var(--red)}
+  .pay-who{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
+  .pay-who-cesar{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+  .pay-who-adri{background:var(--purple-bg);color:var(--purple);border:1px solid #3D2A6E}
+  .empty-pays{font-size:12px;color:var(--text3);padding:4px 0 8px}
+  .pay-form{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .pay-form input,.pay-who-select{font-size:12px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:5px 8px;color:var(--text);font-family:var(--font)}
+  .pay-form input[type=number]{width:110px}
+  .pay-form input[type=date]{width:130px;color-scheme:dark}
+  .pay-form input[type=text]{flex:1;min-width:90px}
+  .pay-who-select{width:90px}
+  .pay-form input:focus,.pay-who-select:focus{outline:none;border-color:var(--blue)}
+  .extra-toggle{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);cursor:pointer;white-space:nowrap;user-select:none}
+  .extra-toggle input{width:14px;height:14px;cursor:pointer;accent-color:var(--orange)}
+  .extra-toggle.active{color:var(--orange)}
+  .pay-who-extra{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--orange-bg,#2D1A0D);color:var(--orange);border:1px solid #5C3A1A;white-space:nowrap}
+  .pay-submit{background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius-sm);padding:5px 12px;color:var(--green);font-size:12px;cursor:pointer;white-space:nowrap;font-family:var(--font)}
+  .pay-submit:hover{background:var(--green);color:#000}
+  .pay-complete{background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:var(--radius-sm);padding:5px 12px;color:var(--blue);font-size:12px;cursor:pointer;white-space:nowrap;font-family:var(--font)}
+  .pay-complete:hover{background:var(--blue);color:#000}
+
+  /* Add form */
+  .add-form{background:var(--surface2);border:1px solid var(--blue-border);border-radius:var(--radius);padding:12px;margin-top:8px;display:none}
+  .add-form.open{display:block}
+  .add-form-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .add-form-row input,.add-form-row select{font-size:13px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 10px;color:var(--text);font-family:var(--font)}
+  .add-form-row input[name=name]{flex:2;min-width:130px}
+  .add-form-row input[name=amt]{flex:1;min-width:100px}
+  .add-form-row input[name=cuotas],.add-form-row select[name=dur]{width:80px}
+  .add-form-row input:focus,.add-form-row select:focus{outline:none;border-color:var(--blue)}
+  .add-form-actions{display:flex;gap:8px;justify-content:flex-end}
+  .btn-cancel{background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:6px 14px;color:var(--text2);font-size:12px;cursor:pointer}
+  .btn-save{background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:var(--radius-sm);padding:6px 14px;color:var(--blue);font-size:12px;cursor:pointer;font-family:var(--font)}
+  .btn-save:hover{background:var(--blue);color:#000}
+
+  /* Dur modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:100;display:none}
+  .modal-overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:20px;width:280px;max-width:90vw}
+  .modal h3{font-size:15px;font-weight:600;margin-bottom:6px}
+  .modal p{font-size:12px;color:var(--text2);margin-bottom:16px}
+  .modal-opts{display:flex;flex-direction:column;gap:8px}
+  .modal-opt{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;cursor:pointer;transition:border-color .15s}
+  .modal-opt:hover{border-color:var(--blue)}
+  .modal-opt.selected{border-color:var(--blue);background:var(--blue-bg)}
+  .modal-opt-label{font-size:13px;font-weight:500}
+  .modal-opt-desc{font-size:11px;color:var(--text3);margin-top:2px}
+  .modal-meses{display:flex;align-items:center;gap:8px;margin-top:4px}
+  .modal-meses input{width:60px;font-size:13px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:4px 8px;color:var(--text);font-family:var(--font)}
+  .modal-meses label{font-size:12px;color:var(--text2)}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+  /* Ingresos */
+  .ing-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+  .ing-block-title{padding:12px 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);border-bottom:1px solid var(--border)}
+  .ing-row{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);font-size:13px}
+  .ing-row:last-child{border-bottom:none}
+  .ing-label{color:var(--text2)}
+  .ing-val{font-weight:500}
+  .ing-val.green{color:var(--green)}.ing-val.red{color:var(--red)}.ing-val.blue{color:var(--blue)}
+  .ing-input{font-size:13px;font-weight:600;width:130px;text-align:right;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:var(--radius-sm);padding:3px 8px;color:var(--yellow);font-family:var(--font)}
+  .ing-input:focus{outline:none;border-color:var(--yellow)}
+  .ing-total-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font-size:15px;font-weight:700;background:var(--green-bg);border-top:1px solid var(--green-border)}
+  .ing-note{font-size:11px;color:var(--text3);padding:8px 14px}
+
+  /* Resumen */
+  .resumen{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+  .res-row{display:flex;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--border);font-size:13px}
+  .res-row:last-child{border-bottom:none}
+  .res-section-title{padding:10px 14px 4px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)}
+  .res-total{display:flex;justify-content:space-between;padding:13px 14px;font-size:15px;font-weight:700;background:var(--surface2)}
+
+  /* Evolución / charts */
+  .evo-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+  .evo-title{font-size:13px;font-weight:600;color:var(--text-secondary,var(--text2));margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  .evo-sub{font-size:11px;color:var(--text3);margin-bottom:16px}
+  .evo-chart{display:flex;align-items:flex-end;gap:8px;height:160px;padding:0 2px}
+  .evo-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+  .evo-bar-stack{width:100%;max-width:36px;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;cursor:pointer;transition:opacity .15s}
+  .evo-col:hover .evo-bar-stack{opacity:.85}
+  .evo-seg{width:100%;transition:height .3s}
+  .evo-seg.fijo{background:var(--blue)}
+  .evo-seg.var{background:var(--yellow)}
+  .evo-seg.cesar{background:var(--purple)}
+  .evo-label{font-size:10px;color:var(--text3);margin-top:6px;white-space:nowrap}
+  .evo-val{font-size:9px;color:var(--text2);margin-bottom:2px;white-space:nowrap}
+  .evo-legend{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+  .evo-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+  .evo-legend-dot{width:9px;height:9px;border-radius:2px}
+  .evo-tooltip{font-size:11px;color:var(--text2);text-align:center;margin-top:8px;min-height:14px}
+
+  .empty-state{text-align:center;padding:24px;color:var(--text3);font-size:13px}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="container" id="appContainer" style="display:none">
+  <div class="header">
+    <div class="header-left">
+      <h1>Tracker financiero</h1>
+      <p id="headerSub">César · Julio 2026</p>
+    </div>
+    <div class="header-right">
+      <span id="syncStatus" style="font-size:11px;color:var(--text3)"></span>
+      <button class="btn-reset" onclick="signOut()">Salir</button>
+      <div class="month-nav">
+        <button onclick="changeMonth(-1)">‹</button>
+        <span class="month-label" id="monthLabel"></span>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="cards" id="summaryCards"></div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('gastos')">Gastos</button>
+    <button class="tab" onclick="switchTab('ingresos')">Ingresos</button>
+    <button class="tab" onclick="switchTab('resumen')">Resumen</button>
+    <button class="tab" onclick="switchTab('evolucion')">Evolución</button>
+  </div>
+
+  <div class="tab-panel active" id="tab-gastos"><div id="sections-gastos"></div></div>
+  <div class="tab-panel" id="tab-ingresos"><div id="ingresos-content"></div></div>
+  <div class="tab-panel" id="tab-resumen"><div id="resumen-content"></div></div>
+  <div class="tab-panel" id="tab-evolucion"><div id="evolucion-content"></div></div>
+</div>
+
+<!-- Login screen -->
+<div id="loginScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:340px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px">
+    <h1 style="font-size:20px;font-weight:600;margin-bottom:4px;text-align:center">Tracker financiero</h1>
+    <p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:24px">Iniciá sesión para continuar</p>
+    <div id="loginError" style="display:none;background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);font-size:12px;padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:14px"></div>
+    <button onclick="loginWithGoogle()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px;color:#1F1F1F;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font);margin-bottom:16px">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.28-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+      Continuar con Google
+    </button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+      <span style="font-size:11px;color:var(--text3)">o con email</span>
+      <div style="flex:1;height:1px;background:var(--border2)"></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+      <input type="email" id="loginEmail" placeholder="Email" style="font-size:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;color:var(--text);font-family:var(--font)">
+      <input type="password" id="loginPassword" placeholder="Contraseña" style="font-size:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;color:var(--text);font-family:var(--font)">
+    </div>
+    <button onclick="doLogin()" id="loginBtn" style="width:100%;background:var(--blue);border:none;border-radius:var(--radius-sm);padding:11px;color:#000;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font)">Iniciar sesión</button>
+    <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:14px">Tus datos se sincronizan automáticamente entre dispositivos</p>
+  </div>
+</div>
+
+
+<!-- Duration modal -->
+<div class="modal-overlay" id="durModal">
+  <div class="modal">
+    <h3>¿Cuánto tiempo se repite?</h3>
+    <p id="durModalName"></p>
+    <div class="modal-opts">
+      <div class="modal-opt" id="dopt-siempre" onclick="setDurOpt('siempre')">
+        <div><div class="modal-opt-label">Siempre</div><div class="modal-opt-desc">Se copia todos los meses</div></div>
+        <span style="color:var(--green)">∞</span>
+      </div>
+      <div class="modal-opt" id="dopt-meses" onclick="setDurOpt('meses')">
+        <div>
+          <div class="modal-opt-label">Cantidad de meses</div>
+          <div class="modal-meses">
+            <input type="number" min="1" max="36" id="durMesesInput" value="3" onclick="event.stopPropagation()">
+            <label>meses desde este</label>
+          </div>
+        </div>
+        <span style="color:var(--yellow)">N</span>
+      </div>
+      <div class="modal-opt" id="dopt-solo" onclick="setDurOpt('solo')">
+        <div><div class="modal-opt-label">Solo este mes</div><div class="modal-opt-desc">No se copia al siguiente</div></div>
+        <span style="color:var(--red)">1</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDurModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveDur()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MONTHS_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Set','Oct','Nov','Dic'];
+const STORAGE_KEY = 'tracker_v3';
+let nid = 500;
+let curYear = 2026, curMonth = 6; // Jul = 6
+
+// ── UTILS ────────────────────────────────────────────────────────────────────
+function fmt(n){ return 'Gs. '+Math.round(n).toLocaleString('es-PY'); }
+function fmtDecimal(n){ return n.toLocaleString('es-PY', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function parseDecimalInput(v){ return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0; }
+function updateIng(field, val, fallback){
+  ing[field] = parseDecimalInput(val) || fallback || 0;
+  save(); renderIngresos(); renderSummary(); renderResumen();
+}
+function fmtIngInput(input){
+  const raw = String(input.value).replace(/\./g,'').replace(',','.');
+  const num = parseFloat(raw) || 0;
+  const field = input.dataset.field;
+  const fallback = parseFloat(input.dataset.fallback) || 0;
+  input.value = num ? fmtDecimal(num) : '';
+  ing[field] = num || fallback;
+  save(); renderSummary(); renderResumen();
+}
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+function fmtDate(s){ if(!s)return''; const[y,m,d]=s.split('-'); return `${d}/${m}`; }
+function mIdx(y,m){ return y*12+m; }
+function paidOf(e,y,m){ return((e.payments||{})[`${y}-${m}`]||[]).reduce((s,p)=>s+p.amount,0); }
+function paidOfNormal(e,y,m){ return((e.payments||{})[`${y}-${m}`]||[]).filter(p=>!p.extra).reduce((s,p)=>s+p.amount,0); }
+function extraPaidOf(e,y,m){ return((e.payments||{})[`${y}-${m}`]||[]).filter(p=>p.extra===true||p.extra==='true').reduce((s,p)=>s+p.amount,0); }
+function mAmt(e,y,m){
+  if(e.type==='puntual') return Math.round(e.amount/e.totalCuotas);
+  if(e.monthlyAmounts){
+    const key=`${y!=null?y:curYear}-${m!=null?m:curMonth}`;
+    if(key in e.monthlyAmounts) return e.monthlyAmounts[key];
+  }
+  return e.amount;
+}
+
+// ── DURATION LOGIC ───────────────────────────────────────────────────────────
+// dur: {type:'siempre'} | {type:'meses', count:N, startYear, startMonth} | {type:'solo', startYear, startMonth}
+// endYear/endMonth (opcional): último mes en que el gasto sigue visible (inclusive). Se usa al "borrar desde este mes".
+function isVisibleInMonth(e, y, m){
+  if(e.type==='puntual'){
+    const s=mIdx(e.startYear,e.startMonth), end=s+e.totalCuotas-1, c=mIdx(y,m);
+    return c>=s && c<=end;
+  }
+  if(e.endYear!=null && e.endMonth!=null){
+    if(mIdx(y,m) > mIdx(e.endYear,e.endMonth)) return false;
+  }
+  const dur = e.dur || {type:'siempre'};
+  if(dur.type==='siempre') return true;
+  if(dur.type==='solo') return mIdx(y,m)===mIdx(dur.startYear,dur.startMonth);
+  if(dur.type==='meses'){
+    const s=mIdx(dur.startYear,dur.startMonth), end=s+dur.count-1, c=mIdx(y,m);
+    return c>=s && c<=end;
+  }
+  return true;
+}
+
+function durLabel(e){
+  const dur = e.dur || {type:'siempre'};
+  if(e.type==='puntual') return `${cuotaNum(e,curYear,curMonth)}/${e.totalCuotas}`;
+  if(dur.type==='siempre') return '∞';
+  if(dur.type==='solo') return '1×';
+  if(dur.type==='meses'){
+    const passed = mIdx(curYear,curMonth)-mIdx(dur.startYear,dur.startMonth)+1;
+    return `${passed}/${dur.count}`;
+  }
+  return '∞';
+}
+
+function durClass(e){
+  const dur = e.dur || {type:'siempre'};
+  if(dur.type==='siempre') return 'siempre';
+  if(dur.type==='solo') return 'solo';
+  return 'meses';
+}
+
+function cuotaNum(e,y,m){ return mIdx(y,m)-mIdx(e.startYear,e.startMonth)+1; }
+
+// ── BASE EXPENSES ─────────────────────────────────────────────────────────────
+const BASE_EXPENSES = [
+  {id:1,name:"Préstamo",amount:6292661,type:"fijo",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 2, "amount": 6292661, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 23, "amount": 6292661, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 35, "amount": 6292661, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 45, "amount": 6292661, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 55, "amount": 6292661, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":6292661,"2026-1":6292661,"2026-2":6292661,"2026-3":6292661,"2026-4":6292661}},
+  {id:3,name:"Niñera finde",amount:2400000,type:"fijo",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 4, "amount": 2400000, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 24, "amount": 2400000, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 36, "amount": 2400000, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 46, "amount": 1800000, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 56, "amount": 2400000, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":2400000,"2026-1":2400000,"2026-2":2400000,"2026-3":1800000,"2026-4":2400000}},
+  {id:5,name:"Jardinero",amount:400000,type:"fijo",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 6, "amount": 400000, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 25, "amount": 400000, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 37, "amount": 400000, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 47, "amount": 400000, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 57, "amount": 400000, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":400000,"2026-1":400000,"2026-2":400000,"2026-3":400000,"2026-4":400000}},
+  {id:7,name:"Diana",amount:2700000,type:"fijo",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 8, "amount": 2200000, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 26, "amount": 2200000, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 38, "amount": 2600000, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 48, "amount": 2700000, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 58, "amount": 2700000, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":2200000,"2026-1":2200000,"2026-2":2600000,"2026-3":2700000,"2026-4":2700000}},
+  {id:9,name:"Colegio",amount:4260000,type:"fijo",owner:"familiar",dur:{type:"siempre"},payments:{"2026-1":[{"pid": 27, "amount": 4260000, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 39, "amount": 4260000, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 49, "amount": 4260000, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 59, "amount": 4260000, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-1":4260000,"2026-2":4260000,"2026-3":4260000,"2026-4":4260000}},
+  {id:10,name:"Colegio descuento",amount:-2000000,type:"fijo",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 11, "amount": -2000000, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 28, "amount": -2000000, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 40, "amount": -2000000, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 50, "amount": -2000000, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 60, "amount": -2000000, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":-2000000,"2026-1":-2000000,"2026-2":-2000000,"2026-3":-2000000,"2026-4":-2000000}},
+  {id:12,name:"Little Oaks",amount:1750000,type:"fijo",owner:"familiar",dur:{type:"siempre"},payments:{"2026-2":[{"pid": 41, "amount": 1750000, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 51, "amount": 1750000, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-2":1750000,"2026-3":1750000}},
+  {id:13,name:"TC Itau",amount:11934093,type:"var",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 14, "amount": 12361054, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 29, "amount": 16256622, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 42, "amount": 14627831, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 52, "amount": 12408611, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 61, "amount": 15860661, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":12361054,"2026-1":16256622,"2026-2":14627831,"2026-3":12408611,"2026-4":15860661}},
+  {id:15,name:"TC Interfisa",amount:0,type:"var",owner:"familiar",dur:{type:"siempre"},payments:{}},
+  {id:16,name:"TC Basa",amount:0,type:"var",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 17, "amount": 433401, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 30, "amount": 569180, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":433401,"2026-1":569180}},
+  {id:18,name:"TC Sudameris",amount:0,type:"var",owner:"familiar",dur:{type:"siempre"},payments:{"2026-4":[{"pid": 62, "amount": 68234, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-4":68234}},
+  {id:19,name:"AMEX común",amount:3994482,type:"var",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 20, "amount": 493600, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 31, "amount": 2488550, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 43, "amount": 1989278, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 53, "amount": 1535253, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 63, "amount": 941704, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":493600,"2026-1":2488550,"2026-2":1989278,"2026-3":1535253,"2026-4":941704}},
+  {id:21,name:"TC GNB",amount:2295637,type:"var",owner:"familiar",dur:{type:"siempre"},payments:{"2026-0":[{"pid": 22, "amount": 2561391, "date": "2026-01-28", "note": "Histórico", "who": "cesar"}],"2026-1":[{"pid": 32, "amount": 3085771, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}],"2026-2":[{"pid": 44, "amount": 3489139, "date": "2026-03-28", "note": "Histórico", "who": "cesar"}],"2026-3":[{"pid": 54, "amount": 2488670, "date": "2026-04-28", "note": "Histórico", "who": "cesar"}],"2026-4":[{"pid": 64, "amount": 4475073, "date": "2026-05-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-0":2561391,"2026-1":3085771,"2026-2":3489139,"2026-3":2488670,"2026-4":4475073}},
+  {id:33,name:"Uniformes Fran",amount:560000,type:"var",owner:"familiar",dur:{type:"siempre"},payments:{"2026-1":[{"pid": 34, "amount": 560000, "date": "2026-02-28", "note": "Histórico", "who": "cesar"}]},monthlyAmounts:{"2026-1":560000}},
+  {id:100,name:"AMEX",amount:0,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:101,name:"Devolución cta vista",amount:0,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:102,name:"Itau Gold",amount:800000,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:103,name:"UENO",amount:8000000,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:104,name:"Auto",amount:1900000,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:105,name:"Ahorro programado",amount:0,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:106,name:"IVA",amount:0,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:107,name:"Renta",amount:5271000,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:108,name:"Seguro",amount:650000,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:109,name:"Andi",amount:700000,type:"var",owner:"cesar",dur:{type:"siempre"},payments:{}},
+  {id:110,name:"Futbol Felipe",amount:350000,type:"fijo",owner:"familiar",dur:{type:"siempre"},payments:{}},
+  {id:111,name:"Futbol Fran",amount:120000,type:"var",owner:"familiar",dur:{type:"siempre"},payments:{}},
+];
+
+let expenses = JSON.parse(JSON.stringify(BASE_EXPENSES));
+
+const ing = { tc:6096.75, salarioUSD:13750, parteFijaBruta:54945055, parteFijaNeta:50000000, ivaCredito:0, gym:300000, prestamo:14769731, bonoUSD:0, bonoTC:6096.75, bonoByMonth:{}, ivaCreditoByMonth:{} };
+
+// ── SUPABASE SETUP ───────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://nmulnllocpebxakyaarp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_jYPnxrZqD5NiFqarixx1xg_jePLVDLW';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentToken = null;
+let saveTimeout = null;
+let isOnline = navigator.onLine;
+let loadFailed = false; // si la carga inicial falla, bloqueamos guardados hasta reintentar con éxito
+
+window.addEventListener('online', ()=>{ isOnline=true; setSyncStatus('Sincronizando...'); flushSave(); });
+window.addEventListener('offline', ()=>{ isOnline=false; setSyncStatus('Sin conexión · guardado local'); });
+
+function setSyncStatus(msg){
+  const el=document.getElementById('syncStatus');
+  if(el) el.textContent = msg;
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+async function loginWithGoogle(){
+  const cleanUrl = window.location.origin + window.location.pathname;
+  const{error} = await sb.auth.signInWithOAuth({
+    provider:'google',
+    options:{ redirectTo: cleanUrl, queryParams:{ access_type:'offline', prompt:'consent' } }
+  });
+  if(error){
+    const errEl=document.getElementById('loginError');
+    errEl.textContent=error.message; errEl.style.display='block';
+  }
+}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  const errEl=document.getElementById('loginError');
+  const btn=document.getElementById('loginBtn');
+  errEl.style.display='none';
+  if(!email||!pass){ errEl.textContent='Completá email y contraseña'; errEl.style.display='block'; return; }
+  btn.textContent='Ingresando...'; btn.disabled=true;
+
+  let{data,error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error && error.message.includes('Invalid login')){
+    // Try sign up if user doesn't exist yet
+    const signup = await sb.auth.signUp({email,password:pass});
+    if(signup.error){ errEl.textContent=signup.error.message; errEl.style.display='block'; btn.textContent='Iniciar sesión'; btn.disabled=false; return; }
+    data=signup.data; error=null;
+  }
+  if(error){ errEl.textContent=error.message; errEl.style.display='block'; btn.textContent='Iniciar sesión'; btn.disabled=false; return; }
+
+  currentUser = data.user;
+  currentToken = data.session?.access_token;
+  await onLoggedIn();
+}
+
+async function signOut(){
+  await sb.auth.signOut();
+  currentUser = null;
+  document.getElementById('appContainer').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+}
+
+async function onLoggedIn(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appContainer').style.display='block';
+  setSyncStatus('Cargando...');
+  try{
+    await withTimeout(loadFromCloud(), 25000, 'inicializar');
+  }catch(e){
+    console.error('onLoggedIn load error', e);
+    loadFailed = true;
+    showLoadErrorBanner();
+  }
+  render();
+  setSyncStatus(isOnline?(loadFailed?'⚠️ No se pudo cargar tus datos guardados':'Sincronizado'):'Sin conexión · guardado local');
+}
+
+let sessionHandled = false;
+
+async function checkSession(){
+  // Register listener FIRST so we never miss the OAuth callback event
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session && !sessionHandled){
+      sessionHandled = true;
+      currentUser = session.user;
+      currentToken = session.access_token;
+      await onLoggedIn();
+      // Clean OAuth params from URL without reloading
+      if(window.location.hash || window.location.search){
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } else if(event === 'SIGNED_OUT'){
+      sessionHandled = false;
+      currentUser = null;
+      currentToken = null;
+      document.getElementById('appContainer').style.display='none';
+      document.getElementById('loginScreen').style.display='flex';
+    } else if(event === 'TOKEN_REFRESHED' && session){
+      currentToken = session.access_token;
+    }
+  });
+
+  // Fallback: also check directly in case the listener already fired before we attached it
+  try{
+    const{data:{session}} = await withTimeout(sb.auth.getSession(), 10000, 'verificar sesión');
+    if(session && !sessionHandled){
+      sessionHandled = true;
+      currentUser = session.user;
+      currentToken = session.access_token;
+      await onLoggedIn();
+    }
+  }catch(e){
+    console.error('checkSession fallback error', e);
+    // Si esto falla y el listener tampoco disparó, mostramos el login para que el usuario reintente
+    if(!sessionHandled){
+      document.getElementById('loginScreen').style.display='flex';
+    }
+  }
+}
+
+// ── CLOUD SYNC ────────────────────────────────────────────────────────────────
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error(`Timeout: ${label} tardó más de ${ms/1000}s`)), ms))
+  ]);
+}
+
+async function loadFromCloud(retryCount=0){
+  if(!currentUser) return;
+  try{
+    // Usamos fetch() directo a la REST API en vez del query builder de supabase-js,
+    // porque hay un bug conocido donde sb.from().select().maybeSingle() puede colgarse
+    // indefinidamente sin siquiera enviar la petición HTTP (supabase-js issue #1620).
+    if(!currentToken) throw new Error('Sin token de sesión');
+    const url = `${SUPABASE_URL}/rest/v1/tracker_data?select=data&user_id=eq.${currentUser.id}`;
+    const res = await withTimeout(
+      fetch(url, {
+        headers:{
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${currentToken}`,
+          'Accept': 'application/json'
+        }
+      }),
+      15000, 'cargar datos'
+    );
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if(row && row.data){
+      const d = row.data;
+      if(d.expenses) expenses = d.expenses;
+      if(d.ing) Object.assign(ing, d.ing);
+      if(d.curYear) curYear = d.curYear;
+      if(d.curMonth!=null) curMonth = d.curMonth;
+      if(d.nid) nid = d.nid;
+    }
+    loadFailed = false;
+    hideLoadErrorBanner();
+  }catch(e){
+    console.error('Load error', e, 'retry', retryCount);
+    if(retryCount < 2){
+      // Reintentamos automáticamente un par de veces antes de rendirnos
+      await new Promise(r=>setTimeout(r,1500));
+      return loadFromCloud(retryCount+1);
+    }
+    loadFailed = true;
+    setSyncStatus('⚠️ No se pudo cargar tus datos guardados');
+    showLoadErrorBanner();
+  }
+}
+
+function showLoadErrorBanner(){
+  let b = document.getElementById('loadErrorBanner');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'loadErrorBanner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:var(--red);color:#1a0000;padding:10px 16px;text-align:center;font-size:13px;font-weight:600;z-index:200;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap';
+    b.innerHTML = `<span>⚠️ No pudimos confirmar tus datos guardados. Para evitar perder información, NO se está guardando nada hasta que reintentes.</span><button onclick="retryLoad()" style="background:#1a0000;color:white;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:600">Reintentar</button>`;
+    document.body.prepend(b);
+  }
+}
+function hideLoadErrorBanner(){
+  document.getElementById('loadErrorBanner')?.remove();
+}
+async function retryLoad(){
+  setSyncStatus('Reintentando...');
+  await loadFromCloud();
+  render();
+  if(!loadFailed) setSyncStatus('Sincronizado ✓');
+}
+
+function save(){
+  if(loadFailed){
+    // No guardamos hasta confirmar que la carga inicial fue exitosa — evita pisar datos buenos con datos vacíos
+    showLoadErrorBanner();
+    setSyncStatus('⚠️ Guardado bloqueado — reintentá la carga primero');
+    return;
+  }
+  // Debounce cloud writes
+  if(saveTimeout) clearTimeout(saveTimeout);
+  setSyncStatus(isOnline?'Guardando...':'Sin conexión · guardado local');
+  saveTimeout = setTimeout(flushSave, 600);
+}
+
+async function flushSave(){
+  if(!currentUser) return;
+  const payload = {expenses, ing, curYear, curMonth, nid};
+  try{
+    if(!currentToken) throw new Error('Sin token de sesión');
+    const url = `${SUPABASE_URL}/rest/v1/tracker_data?on_conflict=user_id`;
+    const res = await withTimeout(
+      fetch(url, {
+        method:'POST',
+        headers:{
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${currentToken}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({user_id: currentUser.id, data: payload})
+      }),
+      10000, 'guardar datos'
+    );
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    setSyncStatus(isOnline?'Sincronizado ✓':'Sin conexión · guardado local');
+  }catch(e){
+    console.error('Save error', e);
+    setSyncStatus('Sin conexión con el servidor — reintentando...');
+    saveTimeout = setTimeout(flushSave, 5000);
+  }
+}
+
+
+// ── MONTH NAV ─────────────────────────────────────────────────────────────────
+const MIN_YEAR = 2026, MIN_MONTH = 0; // No se puede navegar antes de Enero 2026
+
+function changeMonth(d){
+  let newMonth=curMonth+d, newYear=curYear;
+  if(newMonth>11){newMonth=0;newYear++;}
+  if(newMonth<0){newMonth=11;newYear--;}
+  if(mIdx(newYear,newMonth) < mIdx(MIN_YEAR,MIN_MONTH)) return; // bloqueado
+  curMonth=newMonth; curYear=newYear;
+  save(); render();
+}
+
+// ── DURATION MODAL ────────────────────────────────────────────────────────────
+let durEditId = null, durEditOpt = 'siempre';
+function openDurModal(id){
+  const e = expenses.find(x=>x.id===id);
+  if(!e||e.type==='puntual') return;
+  durEditId = id;
+  const dur = e.dur||{type:'siempre'};
+  durEditOpt = dur.type;
+  document.getElementById('durModalName').textContent = e.name;
+  document.getElementById('durMesesInput').value = dur.count||3;
+  document.querySelectorAll('.modal-opt').forEach(o=>o.classList.remove('selected'));
+  document.getElementById('dopt-'+dur.type)?.classList.add('selected');
+  document.getElementById('durModal').classList.add('open');
+}
+function closeDurModal(){ document.getElementById('durModal').classList.remove('open'); durEditId=null; }
+function setDurOpt(opt){
+  durEditOpt=opt;
+  document.querySelectorAll('.modal-opt').forEach(o=>o.classList.remove('selected'));
+  document.getElementById('dopt-'+opt)?.classList.add('selected');
+}
+function saveDur(){
+  const e = expenses.find(x=>x.id===durEditId);
+  if(!e){ closeDurModal(); return; }
+  if(durEditOpt==='siempre') e.dur={type:'siempre'};
+  else if(durEditOpt==='solo') e.dur={type:'solo',startYear:curYear,startMonth:curMonth};
+  else {
+    const n=parseInt(document.getElementById('durMesesInput').value)||3;
+    e.dur={type:'meses',count:n,startYear:curYear,startMonth:curMonth};
+  }
+  closeDurModal(); save(); render();
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['gastos','ingresos','resumen','evolucion'][i]===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='evolucion') renderEvolucion();
+}
+
+// ── EXPENSE CRUD ──────────────────────────────────────────────────────────────
+function toggleAddForm(key){ document.getElementById('addform-'+key)?.classList.toggle('open'); }
+
+function addExpense(key){
+  const[owner,type]=key.split('-');
+  const name=document.getElementById(`af-${key}-name`).value.trim();
+  const amtRaw=document.getElementById(`af-${key}-amt`).value.replace(/\D/g,'');
+  const amt=parseInt(amtRaw)||0;
+  if(!name)return;
+  const dur=document.getElementById(`af-${key}-dur`)?.value||'siempre';
+  const durObj = dur==='siempre'?{type:'siempre'}:dur==='solo'?{type:'solo',startYear:curYear,startMonth:curMonth}:{type:'meses',count:3,startYear:curYear,startMonth:curMonth};
+  const e={id:nid++,name,amount:amt,type,owner,payments:{},dur:durObj};
+  if(type==='puntual'){
+    e.totalCuotas=parseInt(document.getElementById(`af-${key}-cuotas`).value)||1;
+    e.startYear=curYear; e.startMonth=curMonth;
+  }
+  expenses.push(e);
+  document.getElementById(`af-${key}-name`).value='';
+  document.getElementById(`af-${key}-amt`).value='';
+  toggleAddForm(key); save(); render();
+}
+
+function delExpense(id){
+  const e=expenses.find(x=>x.id===id); if(!e)return;
+  // ¿Tiene historial en meses anteriores al actual?
+  const hasPastHistory = Object.keys(e.payments||{}).some(key=>{
+    const[y,m]=key.split('-').map(Number);
+    return mIdx(y,m) < mIdx(curYear,curMonth);
+  }) || e.monthlyAmounts && Object.keys(e.monthlyAmounts).some(key=>{
+    const[y,m]=key.split('-').map(Number);
+    return mIdx(y,m) < mIdx(curYear,curMonth);
+  });
+
+  if(!hasPastHistory || e.type==='puntual'){
+    if(!confirm(`¿Eliminar "${e.name}" por completo?`)) return;
+    expenses=expenses.filter(x=>x.id!==id);
+    save(); render();
+    return;
+  }
+
+  const choice = confirm(
+    `"${e.name}" tiene historial en meses anteriores.\n\n`+
+    `Aceptar = dejar de mostrarlo desde ${MONTHS_SHORT[curMonth]} ${curYear} en adelante (el historial pasado queda intacto)\n`+
+    `Cancelar = no hacer nada`
+  );
+  if(!choice) return;
+
+  // "Borrar desde este mes": le ponemos fecha de fin al mes anterior al actual
+  let endM=curMonth-1, endY=curYear;
+  if(endM<0){endM=11;endY--;}
+  e.endYear=endY; e.endMonth=endM;
+  save(); render();
+}
+
+function fmtAmtInput(input){
+  const raw=input.value.replace(/\D/g,'');
+  const num=parseInt(raw)||0;
+  const id=parseInt(input.dataset.id);
+  input.value=num?num.toLocaleString('es-PY'):'';
+  updateAmt(id,num);
+}
+
+function updateAmt(id,val){
+  const e=expenses.find(x=>x.id===id);
+  if(e){e.amount=parseFloat(val)||0; save(); renderSummary(); renderResumen();}
+}
+
+// ── PAYMENTS ──────────────────────────────────────────────────────────────────
+function toggleDetail(id){
+  const p=document.getElementById('detail-'+id),b=document.getElementById('tog-'+id);
+  if(!p)return;
+  const open=p.classList.toggle('open');
+  const cnt=((expenses.find(x=>x.id===id)?.payments||{})[`${curYear}-${curMonth}`]||[]).length;
+  b.textContent=open?'Cerrar':`Pagos${cnt?' ('+cnt+')':''}`;
+}
+
+function payComplete(id){
+  const e=expenses.find(x=>x.id===id); if(!e)return;
+  const target=mAmt(e);
+  const ya=paidOf(e,curYear,curMonth);
+  const restante=target-ya;
+  if(restante===0)return;
+  const d=document.getElementById('pd-'+id).value||todayStr();
+  const who=document.getElementById('pw-'+id)?.value||'cesar';
+  const extra=document.getElementById('pe-'+id)?.checked||false;
+  const key=`${curYear}-${curMonth}`;
+  if(!e.payments[key])e.payments[key]=[];
+  e.payments[key].push({pid:nid++,amount:restante,date:d,note:'Pago completo',who,extra});
+  save(); render();
+}
+
+function addPayment(id){
+  const a=parseFloat(document.getElementById('pa-'+id).value)||0;
+  const d=document.getElementById('pd-'+id).value||todayStr();
+  const n=(document.getElementById('pn-'+id).value||'').trim();
+  const who=document.getElementById('pw-'+id)?.value||'cesar';
+  const extra=document.getElementById('pe-'+id)?.checked||false;
+  if(!a)return;
+  const e=expenses.find(x=>x.id===id); if(!e)return;
+  const key=`${curYear}-${curMonth}`;
+  if(!e.payments[key])e.payments[key]=[];
+  e.payments[key].push({pid:nid++,amount:a,date:d,note:n,who,extra});
+  document.getElementById('pa-'+id).value='';
+  document.getElementById('pn-'+id).value='';
+  // Reset checkbox
+  const cb=document.getElementById('pe-'+id);
+  if(cb){cb.checked=false;document.getElementById('et-'+id)?.classList.remove('active');}
+  save(); render();
+  setTimeout(()=>{ const p=document.getElementById('detail-'+id); if(p) toggleDetail(id); },30);
+}
+
+function delPayment(id,pid){
+  const e=expenses.find(x=>x.id===id); if(!e)return;
+  const key=`${curYear}-${curMonth}`;
+  if(e.payments[key])e.payments[key]=e.payments[key].filter(p=>p.pid!==pid);
+  save(); render();
+}
+
+// ── CARD HTML ─────────────────────────────────────────────────────────────────
+function cardHtml(e){
+  const ma=mAmt(e), p=paidOf(e,curYear,curMonth), abs=Math.abs(ma);
+  const pct=abs?Math.min(Math.round(Math.abs(p)/abs*100),100):0;
+  const done=ma===0||(ma>0?p>=ma:p<=ma);
+  const pays=(e.payments[`${curYear}-${curMonth}`]||[]);
+  const plistHtml=pays.length
+    ?pays.map(pm=>`<div class="pay-item">
+        <span class="pay-date">${fmtDate(pm.date)}</span>
+        <span class="pay-amt">${fmt(pm.amount)}</span>
+        <span class="pay-who pay-who-${pm.who||'cesar'}">${pm.who==='adri'?'Adri':'César'}</span>
+        ${pm.extra?`<span class="pay-who-extra">Extrapres.</span>`:''}
+        <span class="pay-note">${pm.note}</span>
+        <button class="pay-del" onclick="delPayment(${e.id},${pm.pid})">✕</button>
+      </div>`).join('')
+    :'<div class="empty-pays">Sin pagos aún</div>';
+
+  const amtCell = e.type!=='fijo' && ma>=0
+    ? `<input class="amt-input-fmt" type="text" inputmode="numeric" value="${ma?ma.toLocaleString('es-PY'):''}" placeholder="0" data-id="${e.id}" onkeyup="fmtAmtInput(this)" onblur="fmtAmtInput(this)">`
+    : `<div class="exp-amounts"><div class="exp-total" style="color:${ma<0?(done?'var(--text3)':'var(--red)'):'var(--text)'}">${fmt(ma)}</div><div class="exp-paid-lbl">${p>0?fmt(p)+' pagado':''}</div></div>`;
+
+  const dc=durClass(e), dl=durLabel(e);
+  return `<div class="exp-wrap" id="wrap-${e.id}">
+    <div class="exp-del-bg" onclick="delExpense(${e.id})">🗑</div>
+    <div class="exp-card ${done&&ma!==0?'completed':''}" id="ec-${e.id}">
+      <div class="exp-main">
+        <div class="exp-info">
+          <div class="exp-name">${e.name}</div>
+          <div class="exp-meta">
+            <span class="dur-badge ${dc}" onclick="event.stopPropagation();openDurModal(${e.id})" title="Editar duración">${dl}</span>
+          </div>
+        </div>
+        ${amtCell}
+        <button class="exp-toggle" id="tog-${e.id}" onclick="toggleDetail(${e.id})">Pagos${pays.length?' ('+pays.length+')':''}</button>
+      </div>
+      ${ma!==0?`<div class="exp-progress">
+        <div class="pbar"><div class="pfill ${done?'done':''}" style="width:${pct}%"></div></div>
+        <div class="plabels"><span>${pct}% ${ma<0?'recibido':'pagado'}</span><span>${done?'<span style="color:var(--green)">✓ Completo</span>':fmt(Math.abs(ma-p))+' pendiente'}</span></div>
+      </div>`:''}
+      <div class="detail" id="detail-${e.id}">
+        <div class="pay-list">${plistHtml}</div>
+        <div class="pay-form">
+          <input type="number" id="pa-${e.id}" placeholder="Monto Gs.">
+          <input type="date" id="pd-${e.id}" value="${todayStr()}">
+          <select class="pay-who-select" id="pw-${e.id}"><option value="cesar">César</option><option value="adri">Adri</option></select>
+          <input type="text" id="pn-${e.id}" placeholder="Nota (opcional)">
+          <label class="extra-toggle" id="et-${e.id}" title="No descuenta del disponible del mes">
+            <input type="checkbox" id="pe-${e.id}" onchange="document.getElementById('et-${e.id}').classList.toggle('active',this.checked)">
+            Extrapresupuesto
+          </label>
+          <button class="pay-complete" onclick="payComplete(${e.id})">✓ Completo</button>
+          <button class="pay-submit" onclick="addPayment(${e.id})">+ Registrar</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── ADD FORM HTML ─────────────────────────────────────────────────────────────
+function addFormHtml(key,type){
+  const durSel = type!=='puntual'
+    ? `<select name="dur" id="af-${key}-dur"><option value="siempre">Siempre</option><option value="meses">N meses</option><option value="solo">Solo este</option></select>`
+    : `<input name="cuotas" type="number" min="1" id="af-${key}-cuotas" value="1" placeholder="Cuotas">`;
+  return `<div class="add-form" id="addform-${key}">
+    <div class="add-form-row">
+      <input name="name" type="text" id="af-${key}-name" placeholder="Nombre del gasto">
+      <input name="amt" type="text" inputmode="numeric" id="af-${key}-amt" placeholder="Monto Gs.">
+      ${durSel}
+    </div>
+    <div class="add-form-actions">
+      <button class="btn-cancel" onclick="toggleAddForm('${key}')">Cancelar</button>
+      <button class="btn-save" onclick="addExpense('${key}')">Guardar</button>
+    </div>
+  </div>`;
+}
+
+// ── RENDER SECTIONS ───────────────────────────────────────────────────────────
+const SECTIONS=[
+  {key:'familiar-fijo',badge:'badge-fijo',badgeText:'Fijo',label:'Gastos familiares',owner:'familiar',type:'fijo'},
+  {key:'familiar-var',badge:'badge-var',badgeText:'Variable',label:'Gastos familiares',owner:'familiar',type:'var'},
+  {key:'familiar-puntual',badge:'badge-puntual',badgeText:'Puntual',label:'Gastos familiares',owner:'familiar',type:'puntual'},
+  {key:'cesar-var',badge:'badge-var',badgeText:'Variable',label:'Solo César',owner:'cesar',type:'var'},
+  {key:'cesar-puntual',badge:'badge-puntual',badgeText:'Puntual',label:'Solo César',owner:'cesar',type:'puntual'},
+];
+
+function renderSections(){
+  // Auto-update IVA
+  // Auto-update IVA — usa id 106 (gasto César "IVA")
+  const ivaExp=expenses.find(x=>x.id===106);
+  if(ivaExp){const{ivaNeto}=calcIng(); ivaExp.amount=Math.round(ivaNeto);}
+
+  const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
+  document.getElementById('sections-gastos').innerHTML=SECTIONS.map(s=>{
+    const items=vis.filter(e=>e.owner===s.owner&&e.type===s.type);
+    return `<div class="section">
+      <div class="section-head">
+        <div class="section-title"><span class="badge ${s.badge}">${s.badgeText}</span><span>${s.label}</span></div>
+        <button class="add-btn" onclick="toggleAddForm('${s.key}')">+ Agregar</button>
+      </div>
+      ${addFormHtml(s.key,s.type)}
+      <div class="expense-list">${items.length?items.map(cardHtml).join(''):'<div class="empty-state">Sin gastos este mes</div>'}</div>
+    </div>`;
+  }).join('');
+  setTimeout(attachSwipe,0);
+}
+
+// ── INGRESOS ──────────────────────────────────────────────────────────────────
+function ingMKey(){ return `${curYear}-${curMonth}`; }
+function getBonoUSD(){ return (ing.bonoByMonth||{})[ingMKey()]?.usd || 0; }
+function getBonoTC(){ return (ing.bonoByMonth||{})[ingMKey()]?.tc || ing.tc; }
+function getIvaCredito(){ return (ing.ivaCreditoByMonth||{})[ingMKey()] || 0; }
+function setBonoUSD(val){ if(!ing.bonoByMonth)ing.bonoByMonth={}; if(!ing.bonoByMonth[ingMKey()])ing.bonoByMonth[ingMKey()]={usd:0,tc:ing.tc}; ing.bonoByMonth[ingMKey()].usd=val; }
+function setBonoTC(val){ if(!ing.bonoByMonth)ing.bonoByMonth={}; if(!ing.bonoByMonth[ingMKey()])ing.bonoByMonth[ingMKey()]={usd:0,tc:ing.tc}; ing.bonoByMonth[ingMKey()].tc=val; }
+function setIvaCredito(val){ if(!ing.ivaCreditoByMonth)ing.ivaCreditoByMonth={}; ing.ivaCreditoByMonth[ingMKey()]=val; }
+
+function calcIng(){
+  const usdEnGs=ing.salarioUSD*ing.tc;
+  const parteVar=usdEnGs-ing.parteFijaBruta;
+  const ivaGastoSalario=parteVar/11;
+
+  const bonoGs = getBonoUSD() * getBonoTC();
+  const ivaGastoBono = bonoGs/11;
+  const bonoNeto = bonoGs - ivaGastoBono;
+
+  const ivaGastoTotal = ivaGastoSalario + ivaGastoBono;
+  const ivaNeto=Math.max(0,ivaGastoTotal-getIvaCredito());
+  const varNeta=parteVar; // el IVA no se descuenta del ingreso — se acredita en cuenta y se paga aparte
+  const neto=ing.parteFijaNeta+varNeta-ing.gym-ing.prestamo+bonoNeto;
+  return{usdEnGs,parteVar,ivaGasto:ivaGastoSalario,ivaGastoBono,bonoGs,bonoNeto,ivaGastoTotal,ivaNeto,varNeta,neto};
+}
+
+function renderIngresos(){
+  const c=calcIng();
+  document.getElementById('ingresos-content').innerHTML=`
+    <div class="ing-block">
+      <div class="ing-block-title">Tipo de cambio BCP</div>
+      <div class="ing-row"><span class="ing-label">USD / Gs.</span><input class="ing-input" type="text" inputmode="decimal" value="${fmtDecimal(ing.tc)}" data-field="tc" data-fallback="6096.75" onkeyup="fmtIngInput(this)" onblur="fmtIngInput(this);renderIngresos()"></div>
+      <div class="ing-note">Actualizar con TC del día de liquidación · Último: 26/06/26</div>
+    </div>
+    <div class="ing-block">
+      <div class="ing-block-title">Composición del salario</div>
+      <div class="ing-row"><span class="ing-label">Salario bruto</span><span class="ing-val">USD 13.750</span></div>
+      <div class="ing-row"><span class="ing-label">Equivalente en Gs.</span><span class="ing-val blue">${fmt(c.usdEnGs)}</span></div>
+      <div class="ing-row"><span class="ing-label">Parte fija bruta</span><span class="ing-val">Gs. 54.945.055</span></div>
+      <div class="ing-row"><span class="ing-label">Parte variable</span><span class="ing-val green">${fmt(c.parteVar)}</span></div>
+      <div class="ing-row"><span class="ing-label">Neto parte fija (post IPS)</span><span class="ing-val green">Gs. 50.000.000</span></div>
+    </div>
+    <div class="ing-block">
+      <div class="ing-block-title">Bono trimestral / semestral (USD)</div>
+      <div class="ing-row">
+        <span class="ing-label">Monto del bono (USD)</span>
+        <input class="ing-input" type="text" inputmode="decimal" value="${getBonoUSD() ? fmtDecimal(getBonoUSD()) : ''}" placeholder="0" data-field="bonoUSD" data-fallback="0" onkeyup="this._v=parseDecimalInput(this.value)" onblur="setBonoUSD(parseDecimalInput(this.value)||0);save();renderIngresos();renderSummary();renderResumen();">
+      </div>
+      <div class="ing-row">
+        <span class="ing-label">TC del día de cobro del bono</span>
+        <input class="ing-input" type="text" inputmode="decimal" value="${fmtDecimal(getBonoTC())}" data-field="bonoTC" data-fallback="${ing.tc}" onblur="setBonoTC(parseDecimalInput(this.value)||ing.tc);save();renderIngresos();renderSummary();renderResumen();">
+      </div>
+      <div class="ing-row"><span class="ing-label">Equivalente en Gs. (con IVA incluido)</span><span class="ing-val blue">${fmt(c.bonoGs)}</span></div>
+      <div class="ing-row"><span class="ing-label">IVA del bono (÷11)</span><span class="ing-val red">− ${fmt(c.ivaGastoBono)}</span></div>
+      <div class="ing-row"><span class="ing-label">Neto del bono</span><span class="ing-val ${getBonoUSD()>0?'green':''}"">${fmt(c.bonoNeto)}</span></div>
+      <div class="ing-note">${getBonoUSD()>0?'Bono cargado este mes':'Sin bono este mes · Cargalo cuando lo cobrás'}</div>
+    </div>
+    <div class="ing-block">
+      <div class="ing-block-title">IVA</div>
+      <div class="ing-row"><span class="ing-label">IVA gasto salario (parte variable ÷ 11)</span><span class="ing-val red">− ${fmt(c.ivaGasto)}</span></div>
+      <div class="ing-row"><span class="ing-label">IVA gasto bono (÷11)</span><span class="ing-val red">− ${fmt(c.ivaGastoBono)}</span></div>
+      <div class="ing-row"><span class="ing-label">IVA crédito</span><input class="ing-input" type="text" inputmode="decimal" value="${getIvaCredito() ? fmtDecimal(getIvaCredito()) : ''}" placeholder="0" data-field="ivaCredito" data-fallback="0" onblur="setIvaCredito(parseDecimalInput(this.value)||0);save();renderIngresos();renderSummary();renderResumen();"></div>
+      <div class="ing-row"><span class="ing-label">IVA neto a pagar</span><span class="ing-val red">− ${fmt(c.ivaNeto)}</span></div>
+    </div>
+    <div class="ing-block">
+      <div class="ing-block-title">Descuentos del salario</div>
+      <div class="ing-row"><span class="ing-label">Gym</span><span class="ing-val red">− ${fmt(ing.gym)}</span></div>
+      <div class="ing-row"><span class="ing-label">Préstamo terreno</span><span class="ing-val red">− ${fmt(ing.prestamo)}</span></div>
+    </div>
+    <div class="ing-block"><div class="ing-total-row"><span>Ingreso neto estimado</span><span style="color:var(--green)">${fmt(c.neto)}</span></div></div>`;
+}
+
+// ── SUMMARY CARDS ─────────────────────────────────────────────────────────────
+function renderSummary(){
+  const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
+  const fam=vis.filter(e=>e.owner==='familiar');
+  const ces=vis.filter(e=>e.owner==='cesar'&&e.id!==106);
+  const tF=fam.reduce((s,e)=>s+mAmt(e),0), pF=fam.reduce((s,e)=>s+paidOf(e,curYear,curMonth),0);
+  const tC=ces.reduce((s,e)=>s+mAmt(e),0), pC=ces.reduce((s,e)=>s+paidOf(e,curYear,curMonth),0);
+  const tot=tF+tC, pag=pF+pC, pct=tot?Math.round(pag/tot*100):0;
+  // Extrapresupuesto: suma de todos los pagos marcados como extra en el mes
+  const extraTotal=[...fam,...ces].reduce((s,e)=>s+extraPaidOf(e,curYear,curMonth),0);
+  // Disponible = ingreso - (total gastos - lo cubierto con extrapresupuesto)
+  const{neto}=calcIng(), disp=neto-tot+extraTotal;
+  document.getElementById('summaryCards').innerHTML=`
+    <div class="card"><div class="card-label">Familiar</div><div class="card-value cv-blue">${fmt(tF)}</div><div class="card-sub">${fmt(pF)} pagado</div></div>
+    <div class="card"><div class="card-label">César</div><div class="card-value cv-purple">${fmt(tC)}</div><div class="card-sub">${fmt(pC)} pagado</div></div>
+    <div class="card"><div class="card-label">Pendiente</div><div class="card-value cv-red">${fmt(Math.max(0,tot-pag))}</div><div class="card-sub">${pct}% pagado</div></div>
+    <div class="card"><div class="card-label">Disponible</div><div class="card-value ${disp>=0?'cv-green':'cv-red'}">${fmt(disp)}</div><div class="card-sub">tras gastos del mes</div></div>`;
+}
+
+// ── RESUMEN ───────────────────────────────────────────────────────────────────
+function renderResumen(){
+  const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
+  const tF=vis.filter(e=>e.owner==='familiar').reduce((s,e)=>s+mAmt(e),0);
+  const tC=vis.filter(e=>e.owner==='cesar'&&e.id!==106).reduce((s,e)=>s+mAmt(e),0);
+  let pagCesar=0,pagAdri=0,pagExtra=0;
+  vis.forEach(e=>{(e.payments[`${curYear}-${curMonth}`]||[]).forEach(p=>{
+    if(p.extra) pagExtra+=p.amount;
+    else if(p.who==='adri') pagAdri+=p.amount;
+    else pagCesar+=p.amount;
+  });});
+  const pag=pagCesar+pagAdri;
+  const extraTotal=[...vis.filter(e=>e.owner==='familiar'),...vis.filter(e=>e.owner==='cesar'&&e.id!==106)].reduce((s,e)=>s+extraPaidOf(e,curYear,curMonth),0);
+  const{neto,ivaNeto}=calcIng(), disp=neto-tF-tC+extraTotal;
+  document.getElementById('resumen-content').innerHTML=`
+    <div class="resumen">
+      <div class="res-row"><span>Ingreso neto</span><span style="color:var(--green)">${fmt(neto)}</span></div>
+      <div class="res-row"><span>Gastos familiares</span><span style="color:var(--red)">− ${fmt(tF)}</span></div>
+      <div class="res-row"><span>Gastos personales</span><span style="color:var(--red)">− ${fmt(tC)}</span></div>
+      <div class="res-total"><span>Saldo disponible</span><span style="color:${disp>=0?'var(--green)':'var(--red)'}">${fmt(disp)}</span></div>
+    </div>
+    <div class="resumen">
+      <div class="res-section-title">Pagos registrados</div>
+      <div class="res-row"><span style="color:var(--blue)">César</span><span style="color:var(--blue)">${fmt(pagCesar)}</span></div>
+      <div class="res-row"><span style="color:var(--purple)">Adri</span><span style="color:var(--purple)">${fmt(pagAdri)}</span></div>
+      ${pagExtra>0?`<div class="res-row"><span style="color:var(--orange)">Extrapresupuesto</span><span style="color:var(--orange)">${fmt(pagExtra)}</span></div>`:''}
+      <div class="res-row"><span>Total pagado</span><span style="color:var(--green)">${fmt(pag)}</span></div>
+      <div class="res-row"><span>Pendiente</span><span style="color:var(--red)">${fmt(Math.max(0,tF+tC-pag))}</span></div>
+    </div>
+    <div class="resumen">
+      <div class="res-section-title">Desglose</div>
+      <div class="res-row"><span style="color:var(--text2)">Fijos familiar</span><span>${fmt(vis.filter(e=>e.owner==='familiar'&&e.type==='fijo').reduce((s,e)=>s+mAmt(e),0))}</span></div>
+      <div class="res-row"><span style="color:var(--text2)">Variables familiar</span><span>${fmt(vis.filter(e=>e.owner==='familiar'&&e.type==='var').reduce((s,e)=>s+mAmt(e),0))}</span></div>
+      <div class="res-row"><span style="color:var(--text2)">Personales César (sin IVA)</span><span>${fmt(tC)}</span></div>
+      <div class="res-row"><span style="color:var(--text2)">IVA ya descontado del ingreso neto</span><span style="color:var(--red)">− ${fmt(ivaNeto)}</span></div>
+    </div>`;
+}
+
+// ── EVOLUCIÓN MENSUAL ──────────────────────────────────────────────────────────
+function monthTotalsFor(y,m){
+  const vis = expenses.filter(e=>isVisibleInMonth(e,y,m));
+  const fijo = vis.filter(e=>e.owner==='familiar'&&e.type==='fijo').reduce((s,e)=>s+mAmt(e,y,m),0);
+  const varF = vis.filter(e=>e.owner==='familiar'&&e.type==='var').reduce((s,e)=>s+mAmt(e,y,m),0);
+  const varP = vis.filter(e=>e.owner==='familiar'&&e.type==='puntual').reduce((s,e)=>s+mAmt(e,y,m),0);
+  const cesar = vis.filter(e=>e.owner==='cesar'&&e.id!==106).reduce((s,e)=>s+mAmt(e,y,m),0); // excluimos IVA
+  return { fijo, var: varF+varP, cesar, total: fijo+varF+varP+cesar };
+}
+
+function renderEvolucion(){
+  // Build last up-to-12 months from MIN_YEAR/MIN_MONTH up to curYear/curMonth
+  const months = [];
+  let y=MIN_YEAR, m=MIN_MONTH;
+  while(mIdx(y,m) <= mIdx(curYear,curMonth)){
+    months.push({y,m});
+    m++; if(m>11){m=0;y++;}
+  }
+  // Show at most last 12
+  const shown = months.slice(-12);
+  const totals = shown.map(({y,m})=>({y,m,...monthTotalsFor(y,m)}));
+  const maxTotal = Math.max(1, ...totals.map(t=>t.total));
+
+  function fmtShort(n){
+    if(Math.abs(n)>=1000000) return (n/1000000).toFixed(1).replace('.0','')+'M';
+    if(Math.abs(n)>=1000) return Math.round(n/1000)+'K';
+    return String(n);
+  }
+
+  const bars = totals.map(t=>{
+    const hFijo = maxTotal? (t.fijo/maxTotal*140) : 0;
+    const hVar = maxTotal? (t.var/maxTotal*140) : 0;
+    const hCesar = maxTotal? (t.cesar/maxTotal*140) : 0;
+    return `<div class="evo-col" title="${MONTHS_SHORT[t.m]} ${t.y}: ${fmt(t.total)}">
+      <div class="evo-val">${fmtShort(t.total)}</div>
+      <div class="evo-bar-stack" style="height:${Math.max(hFijo+hVar+hCesar,2)}px">
+        <div class="evo-seg cesar" style="height:${hCesar}px"></div>
+        <div class="evo-seg var" style="height:${hVar}px"></div>
+        <div class="evo-seg fijo" style="height:${hFijo}px"></div>
+      </div>
+      <div class="evo-label">${MONTHS_SHORT[t.m]}</div>
+    </div>`;
+  }).join('');
+
+  // Promedio y variación del último mes vs el anterior
+  const last = totals[totals.length-1];
+  const prev = totals.length>1 ? totals[totals.length-2] : null;
+  const variacion = prev && prev.total ? Math.round((last.total-prev.total)/prev.total*100) : null;
+  const promedio = totals.reduce((s,t)=>s+t.total,0)/totals.length;
+
+  document.getElementById('evolucion-content').innerHTML = `
+    <div class="evo-block">
+      <div class="evo-title">Evolución de gastos totales</div>
+      <div class="evo-sub">${shown.length} ${shown.length===1?'mes':'meses'} · ${MONTHS_FULL[shown[0].m]} ${shown[0].y} a ${MONTHS_FULL[shown[shown.length-1].m]} ${shown[shown.length-1].y}</div>
+      <div class="evo-chart">${bars}</div>
+      <div class="evo-legend">
+        <div class="evo-legend-item"><span class="evo-legend-dot" style="background:var(--blue)"></span>Fijos familiar</div>
+        <div class="evo-legend-item"><span class="evo-legend-dot" style="background:var(--yellow)"></span>Variables familiar</div>
+        <div class="evo-legend-item"><span class="evo-legend-dot" style="background:var(--purple)"></span>Personal César</div>
+      </div>
+    </div>
+    <div class="summary-grid" style="margin-bottom:16px">
+      <div class="card"><div class="card-label">Promedio mensual</div><div class="card-value">${fmt(promedio)}</div></div>
+      <div class="card"><div class="card-label">Mes actual</div><div class="card-value cv-blue">${fmt(last.total)}</div></div>
+      <div class="card"><div class="card-label">Vs. mes anterior</div><div class="card-value ${variacion==null?'':variacion>=0?'cv-red':'cv-green'}">${variacion==null?'—':(variacion>=0?'+':'')+variacion+'%'}</div></div>
+      <div class="card"><div class="card-label">Máximo del período</div><div class="card-value cv-red">${fmt(maxTotal)}</div></div>
+    </div>
+    <div class="evo-block">
+      <div class="evo-title">Detalle por mes</div>
+      <div class="evo-sub">Desglose familiar fijo / variable y personal César</div>
+      <div class="resumen" style="margin-bottom:0">
+        ${totals.slice().reverse().map(t=>`
+          <div class="res-row">
+            <span>${MONTHS_SHORT[t.m]} ${t.y}</span>
+            <span style="display:flex;gap:12px">
+              <span style="color:var(--blue)">${fmtShort(t.fijo)}</span>
+              <span style="color:var(--yellow)">${fmtShort(t.var)}</span>
+              <span style="color:var(--purple)">${fmtShort(t.cesar)}</span>
+              <span style="font-weight:600;min-width:60px;text-align:right">${fmtShort(t.total)}</span>
+            </span>
+          </div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ── SWIPE TO DELETE ───────────────────────────────────────────────────────────
+let swipedCard=null;
+function initSwipe(card){
+  const wrap = card.closest('.exp-wrap');
+  let startX=0,startY=0,isDragging=false,isSwipe=false;
+  function onStart(x,y){startX=x;startY=y;isDragging=true;isSwipe=false;card.style.transition='none';}
+  function onMove(x,y){
+    if(!isDragging)return;
+    const dx=x-startX,dy=y-startY;
+    if(!isSwipe&&Math.abs(dy)>Math.abs(dx)){isDragging=false;return;}
+    isSwipe=true;
+    card.style.transform=`translateX(${Math.max(-80,Math.min(0,dx))}px)`;
+  }
+  function onEnd(x){
+    if(!isDragging)return; isDragging=false;
+    card.style.transition='transform .25s ease';
+    if(x-startX<-40){
+      card.style.transform='translateX(-80px)'; card.classList.add('swiped'); wrap?.classList.add('swiped');
+      if(swipedCard&&swipedCard!==card){swipedCard.style.transform='';swipedCard.classList.remove('swiped');swipedCard.closest('.exp-wrap')?.classList.remove('swiped');}
+      swipedCard=card;
+    } else {card.style.transform='';card.classList.remove('swiped');wrap?.classList.remove('swiped');if(swipedCard===card)swipedCard=null;}
+  }
+  card.addEventListener('touchstart',e=>onStart(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  card.addEventListener('touchmove',e=>onMove(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+  card.addEventListener('touchend',e=>onEnd(e.changedTouches[0].clientX));
+  card.addEventListener('mousedown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='BUTTON')return;onStart(e.clientX,e.clientY);});
+  window.addEventListener('mousemove',e=>{if(isDragging)onMove(e.clientX,e.clientY);});
+  window.addEventListener('mouseup',e=>{if(isDragging)onEnd(e.clientX);});
+}
+document.addEventListener('click',e=>{
+  if(swipedCard&&!e.target.closest('.exp-wrap')){swipedCard.style.transform='';swipedCard.classList.remove('swiped');swipedCard.closest('.exp-wrap')?.classList.remove('swiped');swipedCard=null;}
+});
+function attachSwipe(){ document.querySelectorAll('.exp-card').forEach(c=>initSwipe(c)); }
+
+// ── MAIN RENDER ───────────────────────────────────────────────────────────────
+function render(){
+  const mn=`${MONTHS_SHORT[curMonth]} ${curYear}`;
+  document.getElementById('monthLabel').textContent=mn;
+  document.getElementById('headerSub').textContent=`César · ${MONTHS_FULL[curMonth]} ${curYear}`;
+  const prevBtn=document.querySelector('.month-nav button:first-child');
+  if(prevBtn){
+    const atMin = mIdx(curYear,curMonth) <= mIdx(MIN_YEAR,MIN_MONTH);
+    prevBtn.style.opacity = atMin ? '0.25' : '1';
+    prevBtn.style.cursor = atMin ? 'default' : 'pointer';
+  }
+  renderSummary(); renderSections(); renderIngresos(); renderResumen();
+}
+
+checkSession();
+</script>
+</body>
+</html>
