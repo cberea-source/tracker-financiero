@@ -942,7 +942,7 @@ function renderIngresos(){
   document.getElementById('ingresos-content').innerHTML=`
     <div class="ing-block">
       <div class="ing-block-title">Tipo de cambio BCP</div>
-      <div class="ing-row"><span class="ing-label">USD / Gs.</span><input class="ing-input" type="text" inputmode="decimal" value="${fmtDecimal(ing.tc)}" data-field="tc" data-fallback="6096.75" onkeyup="fmtIngInput(this)" onblur="fmtIngInput(this);renderIngresos()"></div>
+      <div class="ing-row"><span class="ing-label">USD / Gs.</span><input class="ing-input" type="text" inputmode="decimal" value="${fmtDecimal(ing.tc)}" data-field="tc" data-fallback="6096.75" onblur="fmtIngInput(this);renderIngresos()"></div>
       <div class="ing-note">Actualizar con TC del día de liquidación · Último: 26/06/26</div>
     </div>
     <div class="ing-block">
