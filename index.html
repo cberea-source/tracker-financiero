@@ -607,6 +607,22 @@ function save(){
   saveTimeout = setTimeout(flushSave, 600);
 }
 
+let consecutiveAuthFailures = 0;
+
+function showSessionExpiredBanner(){
+  let b = document.getElementById('sessionExpiredBanner');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'sessionExpiredBanner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:var(--red);color:#1a0000;padding:10px 16px;text-align:center;font-size:13px;font-weight:600;z-index:200;display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap';
+    b.innerHTML = `<span>⚠️ Tu sesión venció y no se están guardando los cambios que hagas ahora. Recargá la página y volvé a entrar antes de seguir cargando datos.</span><button onclick="location.reload()" style="background:#1a0000;color:white;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:600">Recargar</button>`;
+    document.body.prepend(b);
+  }
+}
+function hideSessionExpiredBanner(){
+  document.getElementById('sessionExpiredBanner')?.remove();
+}
+
 async function flushSave(){
   if(!currentUser) return;
   const payload = {expenses, ing, curYear, curMonth, nid};
@@ -626,7 +642,31 @@ async function flushSave(){
       }),
       10000, 'guardar datos'
     );
+    if(res.status === 401){
+      // El token de acceso venció. Antes de reintentar sin fin (que antes fallaba silenciosamente
+      // para siempre, ver memoria del proyecto), probamos refrescar la sesión una vez.
+      consecutiveAuthFailures++;
+      if(consecutiveAuthFailures <= 2){
+        try{
+          const{data, error} = await sb.auth.refreshSession();
+          if(!error && data?.session){
+            currentToken = data.session.access_token;
+            setSyncStatus('Sesión renovada, reintentando...');
+            saveTimeout = setTimeout(flushSave, 500);
+            return;
+          }
+        }catch(refreshErr){
+          console.error('Refresh session error', refreshErr);
+        }
+      }
+      // No se pudo renovar (o ya lo intentamos): avisamos claramente y dejamos de reintentar en loop.
+      setSyncStatus('⚠️ Sesión vencida — no se está guardando');
+      showSessionExpiredBanner();
+      return;
+    }
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    consecutiveAuthFailures = 0;
+    hideSessionExpiredBanner();
     setSyncStatus(isOnline?'Sincronizado ✓':'Sin conexión · guardado local');
   }catch(e){
     console.error('Save error', e);
