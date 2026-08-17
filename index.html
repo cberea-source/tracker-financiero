@@ -74,6 +74,8 @@
   .exp-toggle{background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);padding:3px 8px;color:var(--text2);font-size:11px;cursor:pointer;white-space:nowrap;transition:all .15s}
   .exp-toggle:hover{border-color:var(--blue);color:var(--blue)}
   .exp-amounts{text-align:right;min-width:100px}
+  .amt-editable{cursor:pointer;border-radius:var(--radius-sm);padding:2px 6px;margin:-2px -6px;transition:background .15s}
+  .amt-editable:hover{background:var(--surface2)}
   .exp-total{font-size:13px;font-weight:600}
   .exp-paid-lbl{font-size:11px;color:var(--text3);margin-top:1px}
   .amt-input-fmt{font-size:13px;font-weight:600;width:130px;text-align:right;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:var(--radius-sm);padding:3px 7px;color:var(--yellow);font-family:var(--font)}
@@ -283,6 +285,29 @@
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeDurModal()">Cancelar</button>
       <button class="btn-save" onclick="saveDur()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Amount edit modal -->
+<div class="modal-overlay" id="amtModal">
+  <div class="modal">
+    <h3>Editar monto</h3>
+    <p id="amtModalName"></p>
+    <div style="margin-bottom:14px">
+      <input type="text" inputmode="numeric" id="amtModalInput" placeholder="Monto Gs." style="width:100%;font-size:15px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-family:var(--font)" onkeyup="fmtAmtModalInput(this)">
+    </div>
+    <div class="modal-opts">
+      <div class="modal-opt" id="aopt-mes" onclick="setAmtScope('mes')">
+        <div><div class="modal-opt-label">Solo este mes</div><div class="modal-opt-desc">No afecta otros meses</div></div>
+      </div>
+      <div class="modal-opt" id="aopt-adelante" onclick="setAmtScope('adelante')">
+        <div><div class="modal-opt-label">Este mes en adelante</div><div class="modal-opt-desc">Los meses anteriores quedan con el monto de antes</div></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAmtModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveAmtModal()">Guardar</button>
     </div>
   </div>
 </div>
@@ -720,6 +745,63 @@ function saveDur(){
   closeDurModal(); save(); render();
 }
 
+// ── AMOUNT EDIT MODAL (montos fijos y variables, con alcance por mes) ─────────
+let amtEditId = null, amtEditScope = 'mes';
+function fmtAmtModalInput(input){
+  const raw = input.value.replace(/\D/g,'');
+  input.value = raw ? parseInt(raw).toLocaleString('es-PY') : '';
+}
+function openAmtModal(id){
+  const e = expenses.find(x=>x.id===id);
+  if(!e || e.type==='puntual') return;
+  amtEditId = id;
+  amtEditScope = 'mes';
+  document.getElementById('amtModalName').textContent = e.name;
+  const current = mAmt(e);
+  document.getElementById('amtModalInput').value = current ? Math.abs(current).toLocaleString('es-PY') : '';
+  document.querySelectorAll('#amtModal .modal-opt').forEach(o=>o.classList.remove('selected'));
+  document.getElementById('aopt-mes').classList.add('selected');
+  document.getElementById('amtModal').classList.add('open');
+}
+function closeAmtModal(){ document.getElementById('amtModal').classList.remove('open'); amtEditId=null; }
+function setAmtScope(scope){
+  amtEditScope = scope;
+  document.querySelectorAll('#amtModal .modal-opt').forEach(o=>o.classList.remove('selected'));
+  document.getElementById('aopt-'+scope).classList.add('selected');
+}
+function saveAmtModal(){
+  const e = expenses.find(x=>x.id===amtEditId);
+  if(!e){ closeAmtModal(); return; }
+  const raw = document.getElementById('amtModalInput').value.replace(/\D/g,'');
+  let newVal = parseInt(raw)||0;
+  // Conservamos el signo actual del gasto (ej. "Colegio descuento" es negativo)
+  const wasNegative = mAmt(e) < 0 || e.amount < 0;
+  if(wasNegative) newVal = -newVal;
+  const key = `${curYear}-${curMonth}`;
+  if(!e.monthlyAmounts) e.monthlyAmounts = {};
+  if(amtEditScope === 'mes'){
+    e.monthlyAmounts[key] = newVal;
+  } else {
+    // "Este mes en adelante": fijamos los meses anteriores (que no tengan ya un
+    // override propio) al monto que tenían hasta ahora, para no reescribir el
+    // historial, y dejamos que el nuevo monto sea la base desde este mes en adelante.
+    let y = MIN_YEAR, m = MIN_MONTH;
+    while(mIdx(y,m) < mIdx(curYear,curMonth)){
+      const k = `${y}-${m}`;
+      if(!(k in e.monthlyAmounts)) e.monthlyAmounts[k] = mAmt(e,y,m);
+      m++; if(m>11){m=0;y++;}
+    }
+    // Borramos cualquier override futuro (>= este mes) para que no tape la nueva base.
+    Object.keys(e.monthlyAmounts).forEach(k=>{
+      const parts = k.split('-').map(Number);
+      if(mIdx(parts[0],parts[1]) >= mIdx(curYear,curMonth)) delete e.monthlyAmounts[k];
+    });
+    e.amount = newVal;
+  }
+  closeAmtModal();
+  save(); render();
+}
+
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function switchTab(name){
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['gastos','ingresos','resumen','evolucion'][i]===name));
@@ -863,7 +945,9 @@ function cardHtml(e){
       </div>`).join('')
     :'<div class="empty-pays">Sin pagos aún</div>';
 
-  const amtCell = e.type!=='fijo' && ma>=0
+  const amtCell = e.type==='fijo'
+    ? `<div class="exp-amounts amt-editable" onclick="openAmtModal(${e.id})" title="Click para editar el monto"><div class="exp-total" style="color:${ma<0?(done?'var(--text3)':'var(--red)'):'var(--text)'}">${fmt(ma)}</div><div class="exp-paid-lbl">${p>0?fmt(p)+' pagado':''}</div></div>`
+    : e.type!=='fijo' && ma>=0
     ? `<input class="amt-input-fmt" type="text" inputmode="numeric" value="${ma?ma.toLocaleString('es-PY'):''}" placeholder="0" data-id="${e.id}" onkeyup="fmtAmtInput(this)" onblur="fmtAmtInput(this)">`
     : `<div class="exp-amounts"><div class="exp-total" style="color:${ma<0?(done?'var(--text3)':'var(--red)'):'var(--text)'}">${fmt(ma)}</div><div class="exp-paid-lbl">${p>0?fmt(p)+' pagado':''}</div></div>`;
 
