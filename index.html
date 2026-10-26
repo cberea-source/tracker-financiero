@@ -392,7 +392,8 @@ function fmt(n){ return 'Gs. '+Math.round(n).toLocaleString('es-PY'); }
 function fmtDecimal(n){ return n.toLocaleString('es-PY', {minimumFractionDigits:2, maximumFractionDigits:2}); }
 function parseDecimalInput(v){ return parseFloat(String(v).replace(/\./g,'').replace(',','.')) || 0; }
 function updateIng(field, val, fallback){
-  ing[field] = parseDecimalInput(val) || fallback || 0;
+  if(field==='tc') setMonthlyTC(parseDecimalInput(val));
+  else ing[field] = parseDecimalInput(val) || fallback || 0;
   save(); renderIngresos(); renderSummary(); renderResumen();
 }
 function fmtIngInput(input){
@@ -401,7 +402,8 @@ function fmtIngInput(input){
   const field = input.dataset.field;
   const fallback = parseFloat(input.dataset.fallback) || 0;
   input.value = num ? fmtDecimal(num) : '';
-  ing[field] = num || fallback;
+  if(field==='tc'){ setMonthlyTC(num); input.value=fmtDecimal(getMonthlyTC()); }
+  else ing[field] = num || fallback;
   save(); renderSummary(); renderResumen();
 }
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
@@ -1144,15 +1146,27 @@ function renderSections(){
 
 // ── INGRESOS ──────────────────────────────────────────────────────────────────
 function ingMKey(){ return `${curYear}-${curMonth}`; }
+function getMonthlyTC(){
+  const monthly=Number((ing.tcByMonth||{})[ingMKey()]);
+  if(Number.isFinite(monthly)&&monthly>0)return monthly;
+  const legacy=Number(ing.tc);
+  return Number.isFinite(legacy)&&legacy>0?legacy:6096.75;
+}
+function setMonthlyTC(value){
+  if(!Number.isFinite(value)||value<=0)return;
+  if(!ing.tcByMonth)ing.tcByMonth={};
+  ing.tcByMonth[ingMKey()]=value;
+}
+
 function getBonoUSD(){ return (ing.bonoByMonth||{})[ingMKey()]?.usd || 0; }
-function getBonoTC(){ return (ing.bonoByMonth||{})[ingMKey()]?.tc || ing.tc; }
+function getBonoTC(){ return (ing.bonoByMonth||{})[ingMKey()]?.tc || getMonthlyTC(); }
 function getIvaCredito(){ return (ing.ivaCreditoByMonth||{})[ingMKey()] || 0; }
-function setBonoUSD(val){ if(!ing.bonoByMonth)ing.bonoByMonth={}; if(!ing.bonoByMonth[ingMKey()])ing.bonoByMonth[ingMKey()]={usd:0,tc:ing.tc}; ing.bonoByMonth[ingMKey()].usd=val; }
-function setBonoTC(val){ if(!ing.bonoByMonth)ing.bonoByMonth={}; if(!ing.bonoByMonth[ingMKey()])ing.bonoByMonth[ingMKey()]={usd:0,tc:ing.tc}; ing.bonoByMonth[ingMKey()].tc=val; }
+function setBonoUSD(val){ if(!ing.bonoByMonth)ing.bonoByMonth={}; if(!ing.bonoByMonth[ingMKey()])ing.bonoByMonth[ingMKey()]={usd:0,tc:getMonthlyTC()}; ing.bonoByMonth[ingMKey()].usd=val; }
+function setBonoTC(val){ if(!ing.bonoByMonth)ing.bonoByMonth={}; if(!ing.bonoByMonth[ingMKey()])ing.bonoByMonth[ingMKey()]={usd:0,tc:getMonthlyTC()}; ing.bonoByMonth[ingMKey()].tc=val; }
 function setIvaCredito(val){ if(!ing.ivaCreditoByMonth)ing.ivaCreditoByMonth={}; ing.ivaCreditoByMonth[ingMKey()]=val; }
 
 function calcIng(){
-  const usdEnGs=ing.salarioUSD*ing.tc;
+  const usdEnGs=ing.salarioUSD*getMonthlyTC();
   const parteVar=usdEnGs-ing.parteFijaBruta;
   const ivaGastoSalario=parteVar/11;
 
@@ -1172,8 +1186,8 @@ function renderIngresos(){
   document.getElementById('ingresos-content').innerHTML=`
     <div class="ing-block">
       <div class="ing-block-title">Tipo de cambio BCP</div>
-      <div class="ing-row"><span class="ing-label">USD / Gs.</span><input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${fmtDecimal(ing.tc)}" data-field="tc" data-fallback="6096.75" onblur="fmtIngInput(this);renderIngresos()"></div>
-      <div class="ing-note">Actualizar con TC del día de liquidación · Último: 26/06/26</div>
+      <div class="ing-row"><span class="ing-label">USD / Gs.</span><input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${fmtDecimal(getMonthlyTC())}" data-field="tc" data-fallback="${getMonthlyTC()}" onblur="fmtIngInput(this);renderIngresos()"></div>
+      <div class="ing-note">TC independiente para el mes seleccionado · Los meses sin TC propio usan el valor anterior como referencia.</div>
     </div>
     <div class="ing-block">
       <div class="ing-block-title">Composición del salario</div>
@@ -1191,7 +1205,7 @@ function renderIngresos(){
       </div>
       <div class="ing-row">
         <span class="ing-label">TC del día de cobro del bono</span>
-        <input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${fmtDecimal(getBonoTC())}" data-field="bonoTC" data-fallback="${ing.tc}" onblur="setBonoTC(parseDecimalInput(this.value)||ing.tc);save();renderIngresos();renderSummary();renderResumen();">
+        <input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${fmtDecimal(getBonoTC())}" data-field="bonoTC" data-fallback="${getMonthlyTC()}" onblur="setBonoTC(parseDecimalInput(this.value)||getMonthlyTC());save();renderIngresos();renderSummary();renderResumen();">
       </div>
       <div class="ing-row"><span class="ing-label">Equivalente en Gs. (con IVA incluido)</span><span class="ing-val blue">${fmt(c.bonoGs)}</span></div>
       <div class="ing-row"><span class="ing-label">IVA del bono (÷11)</span><span class="ing-val red">− ${fmt(c.ivaGastoBono)}</span></div>
@@ -1492,9 +1506,13 @@ function renderSavings(){
   const balances=savingsValidate(savings.transactions);
   const money=(n,c)=>savingsHidden?'****':savingsMoney(n,c);
   const totals=Object.fromEntries(['PYG','USD'].map(c=>[c,SAVINGS_ACCOUNTS.filter(a=>a.currency===c).reduce((s,a)=>s+balances[a.id],0)]));
+  const tc=Number(getMonthlyTC());
+  const validTC=Number.isFinite(tc)&&tc>0;
+  const combined=validTC?{PYG:Math.round(totals.PYG+totals.USD/100*tc),USD:Math.round(totals.USD+totals.PYG/tc*100)}:null;
   const transactions=savings.transactions.map((t,i)=>({t,i})).filter(({t})=>!savingsFilter||t.account===savingsFilter||t.to===savingsFilter).sort((a,b)=>b.t.date.localeCompare(a.t.date)||b.i-a.i);
   root.innerHTML=`<div class="sv-heading"><div><h2>Ahorros</h2><p>Saldo acumulado · separado de tu presupuesto mensual</p></div><button type="button" class="sv-button" onclick="savingsTogglePrivacy()" aria-pressed="${savingsHidden}">${savingsHidden?'Mostrar':'Ocultar'} saldos</button></div>
-    <div class="sv-totals">${['PYG','USD'].map(c=>`<div class="sv-total"><span>${c==='PYG'?'Total en guaraníes':'Total en dólares'}</span><strong>${money(totals[c],c)}</strong><small>Sin conversión entre monedas</small></div>`).join('')}</div>
+    <div class="sv-totals">${['PYG','USD'].map(c=>`<div class="sv-total"><span>${c==='PYG'?'Total en guaraníes':'Total en dólares'}</span><strong>${money(totals[c],c)}</strong><small>${validTC?`Total de ahorros en ${c==='PYG'?'Gs.':'USD'}: ≈ ${money(combined[c],c)}`:'Ingresá un TC válido en Ingresos para ver el total unificado.'}</small></div>`).join('')}</div>
+    <p class="sv-help">${validTC?`Equivalencias estimadas · TC del mes seleccionado: 1 USD = ${savingsEscape(tc.toLocaleString('es-PY',{maximumFractionDigits:4}))} Gs. · Incluyen tus ahorros en ambas monedas.`:'La conversión usa el tipo de cambio del mes seleccionado en Ingresos.'}</p>
     <div class="sv-toolbar"><h3>Mis cuentas</h3><button type="button" class="sv-button sv-primary" onclick="savingsOpen()">+ Registrar movimiento</button></div>
     <div class="sv-accounts">${['PYG','USD'].map(c=>`<section class="sv-account-group"><h4>${c==='PYG'?'Guaraníes · Gs.':'Dólares · USD'}</h4>${SAVINGS_ACCOUNTS.filter(a=>a.currency===c).map(a=>`<div class="sv-account"><button type="button" class="sv-account-name" onclick="savingsSetFilter('${a.id}')">${a.name}</button><strong>${money(balances[a.id],c)}</strong><button type="button" class="sv-add" aria-label="Registrar movimiento en ${a.name}" onclick="savingsOpen('${a.id}')">+</button></div>`).join('')}</section>`).join('')}</div>
     ${!savings.transactions.length?'<p class="sv-help">Para empezar, cargá el saldo inicial de cada cuenta. Las cuentas sin saldo pueden quedar en cero.</p>':''}
