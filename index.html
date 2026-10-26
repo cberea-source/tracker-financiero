@@ -33,6 +33,10 @@
   .btn-reset:hover{color:var(--red);border-color:var(--red-border)}
 
   /* Summary cards */
+  .summary-controls{display:flex;justify-content:flex-end;margin-bottom:8px}
+  .summary-privacy{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text2);font:inherit;font-size:12px;cursor:pointer}
+  .summary-privacy:hover{color:var(--text);border-color:var(--blue)}
+  .summary-privacy:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
   .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
   @media(min-width:500px){.cards{grid-template-columns:repeat(4,1fr)}}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
@@ -196,6 +200,48 @@
   .evo-tooltip{font-size:11px;color:var(--text2);text-align:center;margin-top:8px;min-height:14px}
 
   .empty-state{text-align:center;padding:24px;color:var(--text3);font-size:13px}
+.tabs{flex-wrap:wrap}.tab{min-width:95px}
+.sv-heading,.sv-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:20px 0 14px}
+.sv-heading h2{font-size:24px}.sv-heading p,.sv-help{font-size:12px;color:var(--text2);margin:6px 0 14px;line-height:1.6}
+.sv-totals,.sv-accounts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.sv-total{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;min-width:0}
+.sv-total span,.sv-total small{display:block;color:var(--text2);font-size:12px}
+.sv-total strong{display:block;font-size:24px;color:var(--green);margin:9px 0;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.sv-account-group{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:0}
+.sv-account-group h4{color:var(--text2);font-size:12px;font-weight:500;margin-bottom:8px}
+.sv-account{display:grid;grid-template-columns:minmax(0,1fr) auto 32px;gap:8px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.sv-account:last-child{border:0}.sv-account strong{font-size:12px;font-variant-numeric:tabular-nums}
+.sv-account-name{color:var(--text);font:inherit;text-align:left;background:none;border:0;cursor:pointer;min-height:36px;overflow-wrap:anywhere}
+.sv-button,.sv-add{background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;cursor:pointer;font:inherit;min-height:40px}
+.sv-primary{background:var(--blue);color:var(--bg);border-color:var(--blue);font-weight:600}.sv-add{padding:0;min-height:32px}
+.sv-filter{display:flex;align-items:center;gap:10px;color:var(--text2);font-size:12px;max-width:100%}
+.sv-filter select{min-width:0;max-width:230px;background:var(--surface);color:var(--text);border:1px solid var(--border2);padding:10px;border-radius:8px}
+.sv-history{border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.sv-movement{display:flex;justify-content:space-between;gap:14px;padding:16px;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.sv-movement:last-child{border:0}.sv-movement small{display:block;color:var(--text2);font-size:12px;margin-top:4px}
+.sv-movement-title{margin-top:6px}.sv-movement-value{text-align:right;min-width:105px;font-variant-numeric:tabular-nums}.sv-movement-value strong{font-size:13px}
+.sv-kind{font-size:11px;color:var(--green)}.sv-kind.withdrawal{color:var(--red)}.sv-kind.transfer{color:var(--blue)}.sv-kind.opening{color:var(--purple)}
+.sv-delete{margin-top:8px;background:none;border:0;color:var(--text2);font:inherit;font-size:12px;cursor:pointer;min-height:28px}
+.sv-dialog{margin:auto;width:calc(100% - 24px);max-width:480px;max-height:90vh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--border2);border-radius:16px;padding:24px}
+.sv-dialog::backdrop{background:#000a}.sv-dialog h3{font-size:20px;margin-bottom:12px}.sv-dialog label{display:block;font-size:12px;color:var(--text2);margin:14px 0 6px}
+.sv-dialog input,.sv-dialog select,.sv-dialog textarea{width:100%;min-width:0;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:12px;font:inherit;font-size:16px}
+.sv-dialog textarea{resize:vertical}.sv-dialog [hidden]{display:none}.sv-form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.sv-error{color:var(--red);font-size:13px;margin-top:12px;line-height:1.5}#savingsFeedback{color:var(--text2);font-size:13px;margin-top:12px}
+.sv-demo{padding:12px 16px;margin-bottom:20px;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:10px;color:var(--blue);line-height:1.6;font-size:13px}
+@media(max-width:600px){.sv-totals,.sv-accounts{grid-template-columns:1fr}.sv-total strong{font-size:22px}.sv-account strong{font-size:13px}.sv-movement{padding:12px}.sv-button{min-height:44px}}
+
+
+.payment-source,.payment-savings{width:100%;font-size:12px;color:var(--text2);margin:6px 0}
+.payment-source select,.payment-savings select{background:var(--surface);color:var(--text);padding:9px;border:1px solid var(--border2);border-radius:6px;max-width:100%;font:inherit}
+.payment-source{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.payment-savings{padding:12px;background:var(--surface);border:1px solid var(--purple);border-radius:8px}
+.payment-savings label{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.payment-savings small{display:block;width:100%;line-height:1.5}
+.payment-savings [hidden],.payment-savings[hidden]{display:none!important}.payment-error{width:100%;color:var(--red);font-size:12px}.payment-error:empty{display:none}
+.pay-item{flex-wrap:wrap}.pay-who-savings{color:var(--purple);font-size:11px}
+.payment-source-options{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+.payment-source-options button{background:var(--surface);color:var(--text2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;min-height:44px;font:inherit;cursor:pointer}
+.payment-source-options button[aria-pressed="true"]{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);font-weight:600}
+.payment-source-options button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -217,6 +263,9 @@
     </div>
   </div>
 
+  <div class="summary-controls">
+    <button type="button" class="summary-privacy" id="summaryPrivacyToggle" onclick="toggleSummaryPrivacy()" aria-controls="summaryCards" aria-pressed="false">Ocultar totales</button>
+  </div>
   <div class="cards" id="summaryCards"></div>
 
   <div class="tabs">
@@ -224,13 +273,32 @@
     <button class="tab" onclick="switchTab('ingresos')">Ingresos</button>
     <button class="tab" onclick="switchTab('resumen')">Resumen</button>
     <button class="tab" onclick="switchTab('evolucion')">Evolución</button>
+    <button class="tab" onclick="switchTab('ahorros')">Ahorros</button>
   </div>
 
   <div class="tab-panel active" id="tab-gastos"><div id="sections-gastos"></div></div>
   <div class="tab-panel" id="tab-ingresos"><div id="ingresos-content"></div></div>
   <div class="tab-panel" id="tab-resumen"><div id="resumen-content"></div></div>
   <div class="tab-panel" id="tab-evolucion"><div id="evolucion-content"></div></div>
+  <div class="tab-panel" id="tab-ahorros"><div id="ahorros-content"></div><p id="savingsFeedback" role="status" aria-live="polite"></p></div>
 </div>
+
+<dialog id="savingsDialog" class="sv-dialog" aria-labelledby="savingsDialogTitle">
+  <form id="savingsForm" onsubmit="savingsSubmit(event)">
+    <h3 id="savingsDialogTitle">Registrar movimiento</h3>
+    <label for="sv-type">Tipo de movimiento</label>
+    <select id="sv-type" name="type" onchange="savingsFormUpdate()"><option value="opening">Saldo inicial</option><option value="deposit">Ingreso a ahorros</option><option value="withdrawal">Retiro / gasto de ahorros</option><option value="transfer">Transferencia entre cuentas</option></select>
+    <label for="sv-account">Cuenta de origen / cuenta del movimiento</label><select id="sv-account" name="account" onchange="savingsFormUpdate()"></select>
+    <p class="sv-help" id="savingsAccountBalance"></p>
+    <div id="savingsDestination" hidden><label for="sv-to">Cuenta de destino</label><select id="sv-to" name="to" onchange="savingsFormUpdate()"></select></div>
+    <label for="sv-amount" id="savingsAmountLabel">Importe</label><input id="sv-amount" name="amount" inputmode="decimal" enterkeyhint="done" autocomplete="off" required>
+    <div id="savingsReceived" hidden><label for="sv-received" id="savingsReceivedLabel">Importe recibido</label><input id="sv-received" name="received" inputmode="decimal" enterkeyhint="done" autocomplete="off"></div>
+    <label for="sv-date">Fecha</label><input id="sv-date" name="date" type="date" required>
+    <label for="sv-note">Concepto / nota (opcional)</label><textarea id="sv-note" name="note" maxlength="300" rows="2" placeholder="Por ejemplo: ahorro del mes"></textarea>
+    <p class="sv-help" id="savingsFormHelp"></p><p id="savingsError" class="sv-error" role="alert"></p>
+    <div class="sv-form-actions"><button type="button" class="sv-button" onclick="savingsClose()">Cancelar</button><button type="submit" class="sv-button sv-primary">Guardar movimiento</button></div>
+  </form>
+</dialog>
 
 <!-- Login screen -->
 <div id="loginScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
@@ -271,7 +339,7 @@
         <div>
           <div class="modal-opt-label">Cantidad de meses</div>
           <div class="modal-meses">
-            <input type="number" min="1" max="36" id="durMesesInput" value="3" onclick="event.stopPropagation()">
+            <input type="number" inputmode="numeric" enterkeyhint="done" min="1" max="36" id="durMesesInput" value="3" onclick="event.stopPropagation()">
             <label>meses desde este</label>
           </div>
         </div>
@@ -295,7 +363,7 @@
     <h3>Editar monto</h3>
     <p id="amtModalName"></p>
     <div style="margin-bottom:14px">
-      <input type="text" inputmode="numeric" id="amtModalInput" placeholder="Monto Gs." style="width:100%;font-size:15px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-family:var(--font)" onkeyup="fmtAmtModalInput(this)">
+      <input type="text" inputmode="numeric" enterkeyhint="done" id="amtModalInput" placeholder="Monto Gs." style="width:100%;font-size:15px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text);font-family:var(--font)" onkeyup="fmtAmtModalInput(this)">
     </div>
     <div class="modal-opts">
       <div class="modal-opt" id="aopt-mes" onclick="setAmtScope('mes')">
@@ -340,8 +408,8 @@ function todayStr(){ return new Date().toISOString().split('T')[0]; }
 function fmtDate(s){ if(!s)return''; const[y,m,d]=s.split('-'); return `${d}/${m}`; }
 function mIdx(y,m){ return y*12+m; }
 function paidOf(e,y,m){ return((e.payments||{})[`${y}-${m}`]||[]).reduce((s,p)=>s+p.amount,0); }
-function paidOfNormal(e,y,m){ return((e.payments||{})[`${y}-${m}`]||[]).filter(p=>!p.extra).reduce((s,p)=>s+p.amount,0); }
-function extraPaidOf(e,y,m){ return((e.payments||{})[`${y}-${m}`]||[]).filter(p=>p.extra===true||p.extra==='true').reduce((s,p)=>s+p.amount,0); }
+function paidOfNormal(e,y,m){ return((e.payments||{})[`${y}-${m}`]||[]).filter(p=>!p.extra&&p.source!=='savings').reduce((s,p)=>s+p.amount,0); }
+function extraPaidOf(e,y,m){ return((e.payments||{})[`${y}-${m}`]||[]).filter(p=>p.extra===true||p.extra==='true'||p.source==='savings').reduce((s,p)=>s+p.amount,0); }
 function mAmt(e,y,m){
   if(e.type==='puntual') return Math.round(e.amount/e.totalCuotas);
   if(e.monthlyAmounts){
@@ -436,7 +504,7 @@ let currentUser = null;
 let currentToken = null;
 let saveTimeout = null;
 let isOnline = navigator.onLine;
-let loadFailed = false; // si la carga inicial falla, bloqueamos guardados hasta reintentar con éxito
+let loadFailed = true; // guardado bloqueado hasta completar la carga inicial
 
 window.addEventListener('online', ()=>{ isOnline=true; setSyncStatus('Sincronizando...'); flushSave(); });
 window.addEventListener('offline', ()=>{ isOnline=false; setSyncStatus('Sin conexión · guardado local'); });
@@ -490,6 +558,7 @@ async function signOut(){
 }
 
 async function onLoggedIn(){
+  loadFailed = true;
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appContainer').style.display='block';
   setSyncStatus('Cargando...');
@@ -583,6 +652,7 @@ async function loadFromCloud(retryCount=0){
       if(d.curYear) curYear = d.curYear;
       if(d.curMonth!=null) curMonth = d.curMonth;
       if(d.nid) nid = d.nid;
+      savings = savingsHydrate(d.savings);
     }
     loadFailed = false;
     hideLoadErrorBanner();
@@ -649,8 +719,8 @@ function hideSessionExpiredBanner(){
 }
 
 async function flushSave(){
-  if(!currentUser) return;
-  const payload = {expenses, ing, curYear, curMonth, nid};
+  if(!currentUser || loadFailed) return;
+  const payload = {expenses, ing, curYear, curMonth, nid, savings};
   try{
     if(!currentToken) throw new Error('Sin token de sesión');
     const url = `${SUPABASE_URL}/rest/v1/tracker_data?on_conflict=user_id`;
@@ -804,10 +874,11 @@ function saveAmtModal(){
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function switchTab(name){
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['gastos','ingresos','resumen','evolucion'][i]===name));
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['gastos','ingresos','resumen','evolucion','ahorros'][i]===name));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   if(name==='evolucion') renderEvolucion();
+  if(name==='ahorros') renderSavings();
 }
 
 // ── EXPENSE CRUD ──────────────────────────────────────────────────────────────
@@ -834,6 +905,7 @@ function addExpense(key){
 
 function delExpense(id){
   const e=expenses.find(x=>x.id===id); if(!e)return;
+  if(Object.values(e.payments||{}).flat().some(p=>p.source==='savings')){alert('Este gasto tiene pagos desde ahorros. Eliminá esos pagos primero para devolver los importes a sus cuentas.');return;}
   // ¿Tiene historial en meses anteriores al actual?
   const hasPastHistory = Object.keys(e.payments||{}).some(key=>{
     const[y,m]=key.split('-').map(Number);
@@ -886,47 +958,70 @@ function toggleDetail(id){
   b.textContent=open?'Cerrar':`Pagos${cnt?' ('+cnt+')':''}`;
 }
 
-function payComplete(id){
-  const e=expenses.find(x=>x.id===id); if(!e)return;
-  const target=mAmt(e);
-  const ya=paidOf(e,curYear,curMonth);
-  const restante=target-ya;
-  if(restante===0)return;
-  const d=document.getElementById('pd-'+id).value||todayStr();
-  const who=document.getElementById('pw-'+id)?.value||'cesar';
-  const extra=document.getElementById('pe-'+id)?.checked||false;
-  const key=`${curYear}-${curMonth}`;
-  if(!e.payments[key])e.payments[key]=[];
-  e.payments[key].push({pid:nid++,amount:restante,date:d,note:'Pago completo',who,extra});
-  save(); render();
+// Un pago y su retiro se validan juntos antes de modificar el estado.
+function paymentSourceSelect(id,source){
+  if(!['budget','extra','savings'].includes(source))return;
+  document.getElementById('ps-'+id).value=source;
+  document.querySelectorAll('#ps-options-'+id+' button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.source===source)));
+  paymentSourceUpdate(id);
 }
-
-function addPayment(id){
-  const a=parseFloat(document.getElementById('pa-'+id).value)||0;
-  const d=document.getElementById('pd-'+id).value||todayStr();
-  const n=(document.getElementById('pn-'+id).value||'').trim();
-  const who=document.getElementById('pw-'+id)?.value||'cesar';
-  const extra=document.getElementById('pe-'+id)?.checked||false;
-  if(!a)return;
-  const e=expenses.find(x=>x.id===id); if(!e)return;
-  const key=`${curYear}-${curMonth}`;
-  if(!e.payments[key])e.payments[key]=[];
-  e.payments[key].push({pid:nid++,amount:a,date:d,note:n,who,extra});
-  document.getElementById('pa-'+id).value='';
-  document.getElementById('pn-'+id).value='';
-  // Reset checkbox
-  const cb=document.getElementById('pe-'+id);
-  if(cb){cb.checked=false;document.getElementById('et-'+id)?.classList.remove('active');}
-  save(); render();
-  setTimeout(()=>{ const p=document.getElementById('detail-'+id); if(p) toggleDetail(id); },30);
+function paymentSourceUpdate(id){
+  const fromSavings=document.getElementById('ps-'+id).value==='savings';
+  document.getElementById('ps-details-'+id).hidden=!fromSavings;
+  const account=savingsAccount(document.getElementById('ps-account-'+id).value);
+  document.getElementById('ps-usd-'+id).hidden=!fromSavings||account?.currency!=='USD';
 }
-
+function paymentError(id,message){document.getElementById('payment-error-'+id).textContent=message;}
+function recordExpensePayment(id,amount,date,note,who,source,accountId,usdAmount){
+  if(loadFailed)throw Error('Reintentá la carga de tus datos antes de registrar pagos.');
+  const expense=expenses.find(e=>e.id===id);if(!expense)throw Error('No se encontró el gasto.');
+  if(!Number.isSafeInteger(amount)||amount===0)throw Error('Ingresá un importe entero en guaraníes, distinto de cero.');
+  if(!['budget','extra','savings'].includes(source))throw Error('Elegí el origen del pago.');
+  const key=`${curYear}-${curMonth}`;
+  const payment={pid:nid,amount,date,note,who,extra:source==='extra',source};
+  let next=savings.transactions;
+  if(source==='savings'){
+    if(amount<=0)throw Error('Desde ahorros solo se pueden pagar importes positivos.');
+    const account=savingsAccount(accountId);if(!account)throw Error('Elegí la cuenta de ahorros.');
+    if(date>savingsToday())throw Error('El retiro debe tener fecha de hoy o anterior.');
+    const debit=account.currency==='USD'?savingsParse(usdAmount,'USD'):amount;
+    const transaction={id:crypto.randomUUID(),type:'withdrawal',account:account.id,amount:debit,date,note:`Pago de ${expense.name}${note?' · '+note:''}`,expenseId:id,paymentId:payment.pid,paymentMonth:key};
+    next=[...savings.transactions,transaction];savingsValidate(next);
+    payment.savingsAccount=account.id;payment.savingsTransactionId=transaction.id;
+  }
+  expense.payments=expense.payments||{};
+  expense.payments[key]=[...(expense.payments[key]||[]),payment];
+  savings.transactions=next;nid++;
+  return payment;
+}
+function submitExpensePayment(id,complete){
+  try{
+    const expense=expenses.find(e=>e.id===id);if(!expense)return;
+    const amount=complete?mAmt(expense)-paidOf(expense,curYear,curMonth):Number(document.getElementById('pa-'+id).value);
+    if(complete&&amount===0)return;
+    recordExpensePayment(id,amount,document.getElementById('pd-'+id).value||savingsToday(),complete?'Pago completo':document.getElementById('pn-'+id).value.trim(),document.getElementById('pw-'+id).value,document.getElementById('ps-'+id).value,document.getElementById('ps-account-'+id).value,document.getElementById('ps-debit-'+id).value);
+    save();render();toggleDetail(id);
+  }catch(error){paymentError(id,error.message);}
+}
+function payComplete(id){submitExpensePayment(id,true);}
+function addPayment(id){submitExpensePayment(id,false);}
+function removeExpensePayment(id,pid){
+  if(loadFailed)throw Error('Reintentá la carga de tus datos antes de modificar pagos.');
+  const expense=expenses.find(e=>e.id===id);if(!expense)return;
+  const key=`${curYear}-${curMonth}`,payment=(expense.payments[key]||[]).find(p=>p.pid===pid);if(!payment)return;
+  if(payment.source==='savings'){
+    const tx=savings.transactions.find(t=>t.id===payment.savingsTransactionId);
+    if(!tx||tx.expenseId!==id||tx.paymentId!==pid||tx.paymentMonth!==key)throw Error('No se pudo verificar el retiro asociado. No se modificó el pago.');
+    const next=savings.transactions.filter(t=>t.id!==tx.id);savingsValidate(next);savings.transactions=next;
+  }
+  expense.payments[key]=expense.payments[key].filter(p=>p.pid!==pid);
+}
 function delPayment(id,pid){
-  const e=expenses.find(x=>x.id===id); if(!e)return;
-  const key=`${curYear}-${curMonth}`;
-  if(e.payments[key])e.payments[key]=e.payments[key].filter(p=>p.pid!==pid);
-  save(); render();
+  const expense=expenses.find(e=>e.id===id),payment=expense?.payments?.[`${curYear}-${curMonth}`]?.find(p=>p.pid===pid);
+  if(payment?.source==='savings'&&!confirm('¿Eliminar el pago? El importe volverá a la cuenta de ahorros.'))return;
+  try{removeExpensePayment(id,pid);save();render();toggleDetail(id);}catch(error){paymentError(id,error.message);}
 }
+
 
 // ── CARD HTML ─────────────────────────────────────────────────────────────────
 function cardHtml(e){
@@ -939,8 +1034,8 @@ function cardHtml(e){
         <span class="pay-date">${fmtDate(pm.date)}</span>
         <span class="pay-amt">${fmt(pm.amount)}</span>
         <span class="pay-who pay-who-${pm.who||'cesar'}">${pm.who==='adri'?'Adri':'César'}</span>
-        ${pm.extra?`<span class="pay-who-extra">Extrapres.</span>`:''}
-        <span class="pay-note">${pm.note}</span>
+        ${pm.source==='savings'?`<span class="pay-who-savings">Desde ahorros · ${savingsAccount(pm.savingsAccount)?.name||'Cuenta'}</span>`:pm.extra?`<span class="pay-who-extra">Extrapres.</span>`:''}
+        <span class="pay-note">${savingsEscape(pm.note||'')}</span>
         <button class="pay-del" onclick="delPayment(${e.id},${pm.pid})">✕</button>
       </div>`).join('')
     :'<div class="empty-pays">Sin pagos aún</div>';
@@ -948,7 +1043,7 @@ function cardHtml(e){
   const amtCell = e.type==='fijo'
     ? `<div class="exp-amounts amt-editable" onclick="openAmtModal(${e.id})" title="Click para editar el monto"><div class="exp-total" style="color:${ma<0?(done?'var(--text3)':'var(--red)'):'var(--text)'}">${fmt(ma)}</div><div class="exp-paid-lbl">${p>0?fmt(p)+' pagado':''}</div></div>`
     : e.type!=='fijo' && ma>=0
-    ? `<input class="amt-input-fmt" type="text" inputmode="numeric" value="${ma?ma.toLocaleString('es-PY'):''}" placeholder="0" data-id="${e.id}" onkeyup="fmtAmtInput(this)" onblur="fmtAmtInput(this)">`
+    ? `<input class="amt-input-fmt" type="text" inputmode="numeric" enterkeyhint="done" value="${ma?ma.toLocaleString('es-PY'):''}" placeholder="0" data-id="${e.id}" onkeyup="fmtAmtInput(this)" onblur="fmtAmtInput(this)">`
     : `<div class="exp-amounts"><div class="exp-total" style="color:${ma<0?(done?'var(--text3)':'var(--red)'):'var(--text)'}">${fmt(ma)}</div><div class="exp-paid-lbl">${p>0?fmt(p)+' pagado':''}</div></div>`;
 
   const dc=durClass(e), dl=durLabel(e);
@@ -972,14 +1067,25 @@ function cardHtml(e){
       <div class="detail" id="detail-${e.id}">
         <div class="pay-list">${plistHtml}</div>
         <div class="pay-form">
-          <input type="number" id="pa-${e.id}" placeholder="Monto Gs.">
+          <input type="number" inputmode="numeric" enterkeyhint="done" id="pa-${e.id}" placeholder="Monto Gs.">
           <input type="date" id="pd-${e.id}" value="${todayStr()}">
           <select class="pay-who-select" id="pw-${e.id}"><option value="cesar">César</option><option value="adri">Adri</option></select>
           <input type="text" id="pn-${e.id}" placeholder="Nota (opcional)">
-          <label class="extra-toggle" id="et-${e.id}" title="No descuenta del disponible del mes">
-            <input type="checkbox" id="pe-${e.id}" onchange="document.getElementById('et-${e.id}').classList.toggle('active',this.checked)">
-            Extrapresupuesto
-          </label>
+          <div class="payment-source">
+            <span id="ps-label-${e.id}">Origen del pago</span>
+            <input type="hidden" id="ps-${e.id}" value="budget">
+            <div class="payment-source-options" id="ps-options-${e.id}" role="group" aria-labelledby="ps-label-${e.id}">
+              <button type="button" data-source="budget" aria-pressed="true" onclick="paymentSourceSelect(${e.id},'budget')">Presupuesto mensual</button>
+              <button type="button" data-source="extra" aria-pressed="false" onclick="paymentSourceSelect(${e.id},'extra')">Extrapresupuesto</button>
+              <button type="button" data-source="savings" aria-pressed="false" onclick="paymentSourceSelect(${e.id},'savings')">Desde ahorros</button>
+            </div>
+          </div>
+          <div class="payment-savings" id="ps-details-${e.id}" hidden>
+            <label>¿De qué cuenta? <select id="ps-account-${e.id}" onchange="paymentSourceUpdate(${e.id})">${SAVINGS_ACCOUNTS.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')}</select></label>
+            <label id="ps-usd-${e.id}" hidden>Importe retirado en USD <input id="ps-debit-${e.id}" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Ej. 100,50"><small>El pago se registra en Gs.; indicá los USD que salieron de tu ahorro.</small></label>
+            <small>Descuenta del ahorro elegido, no del Disponible mensual. El retiro se registra automáticamente.</small>
+          </div>
+          <p id="payment-error-${e.id}" class="payment-error" role="alert"></p>
           <button class="pay-complete" onclick="payComplete(${e.id})">✓ Completo</button>
           <button class="pay-submit" onclick="addPayment(${e.id})">+ Registrar</button>
         </div>
@@ -992,11 +1098,11 @@ function cardHtml(e){
 function addFormHtml(key,type){
   const durSel = type!=='puntual'
     ? `<select name="dur" id="af-${key}-dur"><option value="siempre">Siempre</option><option value="meses">N meses</option><option value="solo">Solo este</option></select>`
-    : `<input name="cuotas" type="number" min="1" id="af-${key}-cuotas" value="1" placeholder="Cuotas">`;
+    : `<input name="cuotas" type="number" inputmode="numeric" enterkeyhint="done" min="1" id="af-${key}-cuotas" value="1" placeholder="Cuotas">`;
   return `<div class="add-form" id="addform-${key}">
     <div class="add-form-row">
       <input name="name" type="text" id="af-${key}-name" placeholder="Nombre del gasto">
-      <input name="amt" type="text" inputmode="numeric" id="af-${key}-amt" placeholder="Monto Gs.">
+      <input name="amt" type="text" inputmode="numeric" enterkeyhint="done" id="af-${key}-amt" placeholder="Monto Gs.">
       ${durSel}
     </div>
     <div class="add-form-actions">
@@ -1066,7 +1172,7 @@ function renderIngresos(){
   document.getElementById('ingresos-content').innerHTML=`
     <div class="ing-block">
       <div class="ing-block-title">Tipo de cambio BCP</div>
-      <div class="ing-row"><span class="ing-label">USD / Gs.</span><input class="ing-input" type="text" inputmode="decimal" value="${fmtDecimal(ing.tc)}" data-field="tc" data-fallback="6096.75" onblur="fmtIngInput(this);renderIngresos()"></div>
+      <div class="ing-row"><span class="ing-label">USD / Gs.</span><input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${fmtDecimal(ing.tc)}" data-field="tc" data-fallback="6096.75" onblur="fmtIngInput(this);renderIngresos()"></div>
       <div class="ing-note">Actualizar con TC del día de liquidación · Último: 26/06/26</div>
     </div>
     <div class="ing-block">
@@ -1081,11 +1187,11 @@ function renderIngresos(){
       <div class="ing-block-title">Bono trimestral / semestral (USD)</div>
       <div class="ing-row">
         <span class="ing-label">Monto del bono (USD)</span>
-        <input class="ing-input" type="text" inputmode="decimal" value="${getBonoUSD() ? fmtDecimal(getBonoUSD()) : ''}" placeholder="0" data-field="bonoUSD" data-fallback="0" onkeyup="this._v=parseDecimalInput(this.value)" onblur="setBonoUSD(parseDecimalInput(this.value)||0);save();renderIngresos();renderSummary();renderResumen();">
+        <input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${getBonoUSD() ? fmtDecimal(getBonoUSD()) : ''}" placeholder="0" data-field="bonoUSD" data-fallback="0" onkeyup="this._v=parseDecimalInput(this.value)" onblur="setBonoUSD(parseDecimalInput(this.value)||0);save();renderIngresos();renderSummary();renderResumen();">
       </div>
       <div class="ing-row">
         <span class="ing-label">TC del día de cobro del bono</span>
-        <input class="ing-input" type="text" inputmode="decimal" value="${fmtDecimal(getBonoTC())}" data-field="bonoTC" data-fallback="${ing.tc}" onblur="setBonoTC(parseDecimalInput(this.value)||ing.tc);save();renderIngresos();renderSummary();renderResumen();">
+        <input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${fmtDecimal(getBonoTC())}" data-field="bonoTC" data-fallback="${ing.tc}" onblur="setBonoTC(parseDecimalInput(this.value)||ing.tc);save();renderIngresos();renderSummary();renderResumen();">
       </div>
       <div class="ing-row"><span class="ing-label">Equivalente en Gs. (con IVA incluido)</span><span class="ing-val blue">${fmt(c.bonoGs)}</span></div>
       <div class="ing-row"><span class="ing-label">IVA del bono (÷11)</span><span class="ing-val red">− ${fmt(c.ivaGastoBono)}</span></div>
@@ -1096,7 +1202,7 @@ function renderIngresos(){
       <div class="ing-block-title">IVA</div>
       <div class="ing-row"><span class="ing-label">IVA gasto salario (parte variable ÷ 11)</span><span class="ing-val red">− ${fmt(c.ivaGasto)}</span></div>
       <div class="ing-row"><span class="ing-label">IVA gasto bono (÷11)</span><span class="ing-val red">− ${fmt(c.ivaGastoBono)}</span></div>
-      <div class="ing-row"><span class="ing-label">IVA crédito</span><input class="ing-input" type="text" inputmode="decimal" value="${getIvaCredito() ? fmtDecimal(getIvaCredito()) : ''}" placeholder="0" data-field="ivaCredito" data-fallback="0" onblur="setIvaCredito(parseDecimalInput(this.value)||0);save();renderIngresos();renderSummary();renderResumen();"></div>
+      <div class="ing-row"><span class="ing-label">IVA crédito</span><input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${getIvaCredito() ? fmtDecimal(getIvaCredito()) : ''}" placeholder="0" data-field="ivaCredito" data-fallback="0" onblur="setIvaCredito(parseDecimalInput(this.value)||0);save();renderIngresos();renderSummary();renderResumen();"></div>
       <div class="ing-row"><span class="ing-label">IVA neto a pagar</span><span class="ing-val red">− ${fmt(c.ivaNeto)}</span></div>
     </div>
     <div class="ing-block">
@@ -1108,22 +1214,36 @@ function renderIngresos(){
 }
 
 // ── SUMMARY CARDS ─────────────────────────────────────────────────────────────
+const SUMMARY_PRIVACY_KEY = 'tracker_summary_hidden';
+let summaryHidden = false;
+try { summaryHidden = localStorage.getItem(SUMMARY_PRIVACY_KEY) === 'true'; } catch (_) {}
+
+function toggleSummaryPrivacy(){
+  summaryHidden = !summaryHidden;
+  try { localStorage.setItem(SUMMARY_PRIVACY_KEY, String(summaryHidden)); } catch (_) {}
+  renderSummary();
+}
+
 function renderSummary(){
+  const privacyButton = document.getElementById('summaryPrivacyToggle');
+  privacyButton.textContent = summaryHidden ? 'Mostrar totales' : 'Ocultar totales';
+  privacyButton.setAttribute('aria-pressed', String(summaryHidden));
+  const summaryAmount = value => summaryHidden ? '****' : fmt(value);
   const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
   const fam=vis.filter(e=>e.owner==='familiar');
   const ces=vis.filter(e=>e.owner==='cesar'); // incluye IVA (id 106) como gasto normal
   const tF=fam.reduce((s,e)=>s+mAmt(e),0), pF=fam.reduce((s,e)=>s+paidOf(e,curYear,curMonth),0);
   const tC=ces.reduce((s,e)=>s+mAmt(e),0), pC=ces.reduce((s,e)=>s+paidOf(e,curYear,curMonth),0);
   const tot=tF+tC, pag=pF+pC, pct=tot?Math.round(pag/tot*100):0;
-  // Extrapresupuesto: suma de todos los pagos marcados como extra en el mes
+  // Fondos externos al presupuesto: extrapresupuesto y pagos desde ahorros
   const extraTotal=[...fam,...ces].reduce((s,e)=>s+extraPaidOf(e,curYear,curMonth),0);
   // Disponible = ingreso - (total gastos - lo cubierto con extrapresupuesto)
   const{neto}=calcIng(), disp=neto-tot+extraTotal;
   document.getElementById('summaryCards').innerHTML=`
-    <div class="card"><div class="card-label">Familiar</div><div class="card-value cv-blue">${fmt(tF)}</div><div class="card-sub">${fmt(pF)} pagado</div></div>
-    <div class="card"><div class="card-label">César</div><div class="card-value cv-purple">${fmt(tC)}</div><div class="card-sub">${fmt(pC)} pagado</div></div>
-    <div class="card"><div class="card-label">Pendiente</div><div class="card-value cv-red">${fmt(Math.max(0,tot-pag))}</div><div class="card-sub">${pct}% pagado</div></div>
-    <div class="card"><div class="card-label">Disponible</div><div class="card-value ${disp>=0?'cv-green':'cv-red'}">${fmt(disp)}</div><div class="card-sub">tras gastos del mes</div></div>`;
+    <div class="card"><div class="card-label">Familiar</div><div class="card-value cv-blue">${summaryAmount(tF)}</div><div class="card-sub">${summaryAmount(pF)} pagado</div></div>
+    <div class="card"><div class="card-label">César</div><div class="card-value cv-purple">${summaryAmount(tC)}</div><div class="card-sub">${summaryAmount(pC)} pagado</div></div>
+    <div class="card"><div class="card-label">Pendiente</div><div class="card-value cv-red">${summaryAmount(Math.max(0,tot-pag))}</div><div class="card-sub">${summaryHidden ? '****' : pct+'%'} pagado</div></div>
+    <div class="card"><div class="card-label">Disponible</div><div class="card-value ${disp>=0?'cv-green':'cv-red'}">${summaryAmount(disp)}</div><div class="card-sub">tras gastos del mes</div></div>`;
 }
 
 // ── RESUMEN ───────────────────────────────────────────────────────────────────
@@ -1131,13 +1251,14 @@ function renderResumen(){
   const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
   const tF=vis.filter(e=>e.owner==='familiar').reduce((s,e)=>s+mAmt(e),0);
   const tC=vis.filter(e=>e.owner==='cesar').reduce((s,e)=>s+mAmt(e),0); // incluye IVA (id 106) como gasto normal
-  let pagCesar=0,pagAdri=0,pagExtra=0;
+  let pagCesar=0,pagAdri=0,pagExtra=0,pagSavings=0;
   vis.forEach(e=>{(e.payments[`${curYear}-${curMonth}`]||[]).forEach(p=>{
-    if(p.extra) pagExtra+=p.amount;
+    if(p.source==='savings') pagSavings+=p.amount;
+    else if(p.extra) pagExtra+=p.amount;
     else if(p.who==='adri') pagAdri+=p.amount;
     else pagCesar+=p.amount;
   });});
-  const pag=pagCesar+pagAdri;
+  const pag=pagCesar+pagAdri+pagExtra+pagSavings;
   const extraTotal=[...vis.filter(e=>e.owner==='familiar'),...vis.filter(e=>e.owner==='cesar')].reduce((s,e)=>s+extraPaidOf(e,curYear,curMonth),0);
   const{neto,ivaNeto}=calcIng(), disp=neto-tF-tC+extraTotal;
   document.getElementById('resumen-content').innerHTML=`
@@ -1152,6 +1273,7 @@ function renderResumen(){
       <div class="res-row"><span style="color:var(--blue)">César</span><span style="color:var(--blue)">${fmt(pagCesar)}</span></div>
       <div class="res-row"><span style="color:var(--purple)">Adri</span><span style="color:var(--purple)">${fmt(pagAdri)}</span></div>
       ${pagExtra>0?`<div class="res-row"><span style="color:var(--orange)">Extrapresupuesto</span><span style="color:var(--orange)">${fmt(pagExtra)}</span></div>`:''}
+      ${pagSavings>0?`<div class="res-row"><span style="color:var(--purple)">Desde ahorros</span><span style="color:var(--purple)">${fmt(pagSavings)}</span></div>`:''}
       <div class="res-row"><span>Total pagado</span><span style="color:var(--green)">${fmt(pag)}</span></div>
       <div class="res-row"><span>Pendiente</span><span style="color:var(--red)">${fmt(Math.max(0,tF+tC-pag))}</span></div>
     </div>
@@ -1295,7 +1417,150 @@ function render(){
     prevBtn.style.opacity = atMin ? '0.25' : '1';
     prevBtn.style.cursor = atMin ? 'default' : 'pointer';
   }
-  renderSummary(); renderSections(); renderIngresos(); renderResumen();
+  renderSummary(); renderSections(); renderIngresos(); renderResumen(); renderSavings();
+}
+
+// Ahorros: importes enteros en guaraníes y centavos de USD.
+const SAVINGS_ACCOUNTS = [
+  ['fm-gs','Fondos Mutuos Gs','PYG'], ['fm-usd','Fondos Mutuos USD','USD'],
+  ['cda-gs','CDA Gs','PYG'], ['cda-usd','CDA USD','USD'],
+  ['cash-gs','Efectivo Gs','PYG'], ['cash-usd','Efectivo USD','USD'],
+  ['itau-gs','Cuenta Itau Gs','PYG'], ['ueno-gs','Cta Cte Ueno Gs','PYG'],
+  ['itau-usd','Cuenta Itau USD','USD'], ['ueno-usd','Cuenta Ueno USD','USD']
+].map(([id,name,currency])=>({id,name,currency}));
+let savings = {version:1, transactions:[]};
+let savingsFilter = '';
+let savingsHidden = false;
+try { savingsHidden = localStorage.getItem('tracker_savings_hidden') === 'true'; } catch (_) {}
+const savingsAccount = id => SAVINGS_ACCOUNTS.find(a=>a.id===id);
+const savingsToday = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const savingsEscape = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function savingsMoney(value,currency){
+  return (currency==='USD'?'USD ':'Gs. ')+(value/(currency==='USD'?100:1)).toLocaleString('es-PY',{minimumFractionDigits:currency==='USD'?2:0,maximumFractionDigits:currency==='USD'?2:0});
+}
+function savingsParse(text,currency){
+  const raw=String(text).trim();
+  const pattern=currency==='USD'?/^(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?$/:/^(?:\d+|\d{1,3}(?:\.\d{3})+)$/;
+  if(!pattern.test(raw)) throw Error(currency==='USD'?'Usá el formato 1.250,50 para dólares.':'Ingresá guaraníes enteros, por ejemplo 1.250.000.');
+  const [whole,fraction='']=raw.replace(/\./g,'').split(',');
+  const value=Number(whole)*(currency==='USD'?100:1)+(currency==='USD'?Number(fraction.padEnd(2,'0')):0);
+  if(!Number.isSafeInteger(value)||value<=0) throw Error('El importe debe ser mayor a cero y estar dentro del rango permitido.');
+  return value;
+}
+function savingsEntries(t){
+  if(t.type==='transfer') return [[t.account,-t.amount],[t.to,t.received]];
+  return [[t.account,t.type==='withdrawal'?-t.amount:t.amount]];
+}
+function savingsValidate(transactions){
+  if(!Array.isArray(transactions)) throw Error('El registro de ahorros no tiene un formato válido.');
+  const balances=Object.fromEntries(SAVINGS_ACCOUNTS.map(a=>[a.id,0])),ids=new Set(),seen=new Set();
+  const ordered=transactions.map((t,i)=>({t,i})).sort((a,b)=>String(a.t.date).localeCompare(String(b.t.date))||a.i-b.i);
+  for(const {t} of ordered){
+    if(typeof t.id!=='string'||!/^[a-zA-Z0-9_-]+$/.test(t.id)||ids.has(t.id)||!savingsAccount(t.account)||!['opening','deposit','withdrawal','transfer'].includes(t.type)) throw Error('Hay un movimiento de ahorros inválido o duplicado.');
+    ids.add(t.id);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(t.date)||!Number.isFinite(Date.parse(t.date))||new Date(t.date).toISOString().slice(0,10)!==t.date) throw Error('Elegí una fecha válida.');
+    if(!Number.isSafeInteger(t.amount)||t.amount<=0) throw Error('El importe debe ser mayor a cero.');
+    if(t.type==='opening'&&seen.has(t.account)) throw Error('El saldo inicial debe ser el primer movimiento de esa cuenta.');
+    if(t.type==='transfer'){
+      if(!savingsAccount(t.to)||t.to===t.account) throw Error('Elegí una cuenta de destino diferente.');
+      if(!Number.isSafeInteger(t.received)||t.received<=0) throw Error('Ingresá el importe recibido en la cuenta de destino.');
+      if(savingsAccount(t.account).currency===savingsAccount(t.to).currency&&t.amount!==t.received) throw Error('Entre cuentas de la misma moneda, el importe enviado y recibido debe coincidir.');
+    }
+    for(const [account,delta] of savingsEntries(t)){
+      balances[account]+=delta;seen.add(account);
+      if(!Number.isSafeInteger(balances[account])) throw Error('El saldo supera el rango permitido.');
+      if(balances[account]<0) throw Error(`Saldo insuficiente en ${savingsAccount(account).name} el ${t.date.split('-').reverse().join('/')}. Revisá el saldo inicial y la fecha.`);
+    }
+  }
+  for(const currency of ['PYG','USD']) if(!Number.isSafeInteger(SAVINGS_ACCOUNTS.filter(a=>a.currency===currency).reduce((sum,a)=>sum+balances[a.id],0))) throw Error('El total supera el rango permitido.');
+  return balances;
+}
+function savingsHydrate(value){
+  if(value==null)return {version:1,transactions:[]};
+  if(value.version!==1)throw Error('Versión de ahorros no compatible.');
+  savingsValidate(value.transactions);
+  return {version:1,transactions:value.transactions};
+}
+function savingsTogglePrivacy(){
+  savingsHidden=!savingsHidden;
+  try{localStorage.setItem('tracker_savings_hidden',String(savingsHidden));}catch(_){}
+  renderSavings();
+}
+function savingsSetFilter(id){savingsFilter=id;renderSavings();}
+function renderSavings(){
+  const root=document.getElementById('ahorros-content');if(!root)return;
+  const balances=savingsValidate(savings.transactions);
+  const money=(n,c)=>savingsHidden?'****':savingsMoney(n,c);
+  const totals=Object.fromEntries(['PYG','USD'].map(c=>[c,SAVINGS_ACCOUNTS.filter(a=>a.currency===c).reduce((s,a)=>s+balances[a.id],0)]));
+  const transactions=savings.transactions.map((t,i)=>({t,i})).filter(({t})=>!savingsFilter||t.account===savingsFilter||t.to===savingsFilter).sort((a,b)=>b.t.date.localeCompare(a.t.date)||b.i-a.i);
+  root.innerHTML=`<div class="sv-heading"><div><h2>Ahorros</h2><p>Saldo acumulado · separado de tu presupuesto mensual</p></div><button type="button" class="sv-button" onclick="savingsTogglePrivacy()" aria-pressed="${savingsHidden}">${savingsHidden?'Mostrar':'Ocultar'} saldos</button></div>
+    <div class="sv-totals">${['PYG','USD'].map(c=>`<div class="sv-total"><span>${c==='PYG'?'Total en guaraníes':'Total en dólares'}</span><strong>${money(totals[c],c)}</strong><small>Sin conversión entre monedas</small></div>`).join('')}</div>
+    <div class="sv-toolbar"><h3>Mis cuentas</h3><button type="button" class="sv-button sv-primary" onclick="savingsOpen()">+ Registrar movimiento</button></div>
+    <div class="sv-accounts">${['PYG','USD'].map(c=>`<section class="sv-account-group"><h4>${c==='PYG'?'Guaraníes · Gs.':'Dólares · USD'}</h4>${SAVINGS_ACCOUNTS.filter(a=>a.currency===c).map(a=>`<div class="sv-account"><button type="button" class="sv-account-name" onclick="savingsSetFilter('${a.id}')">${a.name}</button><strong>${money(balances[a.id],c)}</strong><button type="button" class="sv-add" aria-label="Registrar movimiento en ${a.name}" onclick="savingsOpen('${a.id}')">+</button></div>`).join('')}</section>`).join('')}</div>
+    ${!savings.transactions.length?'<p class="sv-help">Para empezar, cargá el saldo inicial de cada cuenta. Las cuentas sin saldo pueden quedar en cero.</p>':''}
+    <div class="sv-toolbar"><h3>Movimientos</h3><label class="sv-filter">Cuenta <select onchange="savingsSetFilter(this.value)"><option value="">Todas</option>${SAVINGS_ACCOUNTS.map(a=>`<option value="${a.id}" ${a.id===savingsFilter?'selected':''}>${a.name}</option>`).join('')}</select></label></div>
+    <p class="sv-help">Historial completo · los saldos incluyen todos los movimientos registrados.</p>
+    <div class="sv-history">${transactions.length?transactions.map(({t})=>{
+      const account=savingsAccount(t.account),isTransfer=t.type==='transfer',labels={opening:'Saldo inicial',deposit:'Ingreso',withdrawal:'Retiro / gasto',transfer:'Transferencia'};
+      const title=isTransfer?account.name+' → '+savingsAccount(t.to).name:account.name;
+      return `<article class="sv-movement"><div><span class="sv-kind ${t.type}">${labels[t.type]}</span><div class="sv-movement-title">${title}</div><small>${t.date.split('-').reverse().join('/')}${t.note?' · '+savingsEscape(t.note):''}</small></div><div class="sv-movement-value"><strong>${t.type==='withdrawal'||isTransfer?'−':'+'} ${money(t.amount,account.currency)}</strong>${isTransfer?`<small>+ ${money(t.received,savingsAccount(t.to).currency)}</small>`:''}${t.paymentId!=null?'<small>Vinculado a un pago en Gastos</small>':`<button type="button" class="sv-delete" onclick="savingsDelete('${savingsEscape(t.id)}')">Eliminar</button>`}</div></article>`;
+    }).join(''):'<div class="empty-state">Todavía no hay movimientos en esta cuenta.</div>'}</div>`;
+}
+let savingsFocusBefore=null;
+function savingsOpen(account=''){
+  savingsFocusBefore=document.activeElement;
+  const dialog=document.getElementById('savingsDialog'),form=document.getElementById('savingsForm');
+  form.reset();
+  for(const name of ['account','to']) form.elements[name].innerHTML=SAVINGS_ACCOUNTS.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  form.elements.account.value=account||savingsFilter||SAVINGS_ACCOUNTS[0].id;
+  form.elements.date.value=savingsToday();form.elements.date.max=savingsToday();
+  const used=savings.transactions.some(t=>savingsEntries(t).some(([id])=>id===form.elements.account.value));
+  form.elements.type.value=used?'deposit':'opening';
+  document.getElementById('savingsError').textContent='';
+  savingsFormUpdate();dialog.showModal();form.elements.amount.focus();
+}
+function savingsClose(){document.getElementById('savingsDialog').close();savingsFocusBefore?.focus();}
+function savingsFormUpdate(){
+  const form=document.getElementById('savingsForm'),account=savingsAccount(form.elements.account.value),transfer=form.elements.type.value==='transfer';
+  for(const opt of form.elements.to.options) opt.disabled=opt.value===account.id;
+  if(form.elements.to.value===account.id)form.elements.to.value=SAVINGS_ACCOUNTS.find(a=>a.id!==account.id&&a.currency===account.currency).id;
+  const target=savingsAccount(form.elements.to.value),cross=transfer&&target.currency!==account.currency;
+  document.getElementById('savingsDestination').hidden=!transfer;
+  document.getElementById('savingsReceived').hidden=!cross;
+  form.elements.received.required=cross;
+  document.getElementById('savingsAmountLabel').textContent=(transfer?'Importe a transferir':'Importe')+' · '+(account.currency==='PYG'?'Gs.':'USD');
+  form.elements.amount.placeholder=account.currency==='PYG'?'Ej. 1.250.000':'Ej. 1.250,50';
+  form.elements.amount.inputMode=account.currency==='PYG'?'numeric':'decimal';
+  document.getElementById('savingsReceivedLabel').textContent='Importe recibido · '+(target.currency==='PYG'?'Gs.':'USD');
+  form.elements.received.placeholder=target.currency==='PYG'?'Ej. 1.250.000':'Ej. 1.250,50';
+  form.elements.received.inputMode=target.currency==='PYG'?'numeric':'decimal';
+  const balance=savingsValidate(savings.transactions)[account.id];
+  document.getElementById('savingsFormHelp').textContent=form.elements.type.value==='opening'?'Saldo que ya tenías antes de empezar a registrar movimientos.':transfer?'Se descuenta de origen y se suma a destino en un solo movimiento.':'Este movimiento no cambia el Disponible mensual.';
+  document.getElementById('savingsAccountBalance').textContent='Saldo de la cuenta: '+(savingsHidden?'****':savingsMoney(balance,account.currency));
+}
+function savingsSubmit(event){
+  event.preventDefault();const form=document.getElementById('savingsForm');
+  try{
+    if(loadFailed)throw Error('Primero reintentá la carga de tus datos antes de registrar un movimiento.');
+    const account=savingsAccount(form.elements.account.value),type=form.elements.type.value,date=form.elements.date.value;
+    if(date>savingsToday())throw Error('Registrá movimientos realizados, con fecha de hoy o anterior.');
+    const transaction={id:crypto.randomUUID(),type,account:account.id,date,amount:savingsParse(form.elements.amount.value,account.currency),note:form.elements.note.value.trim().slice(0,300)};
+    if(type==='transfer'){
+      const target=savingsAccount(form.elements.to.value);transaction.to=target.id;
+      transaction.received=target.currency===account.currency?transaction.amount:savingsParse(form.elements.received.value,target.currency);
+    }
+    const next=[...savings.transactions,transaction];savingsValidate(next);
+    savings.transactions=next;save();savingsClose();renderSavings();
+    document.getElementById('savingsFeedback').textContent='Movimiento registrado. '+document.getElementById('syncStatus').textContent;
+  }catch(error){document.getElementById('savingsError').textContent=error.message;}
+}
+function savingsDelete(id){
+  if(loadFailed){document.getElementById('savingsFeedback').textContent='Reintentá la carga de datos antes de modificar ahorros.';return;}
+  const transaction=savings.transactions.find(t=>t.id===id);if(!transaction)return;
+  if(transaction.paymentId!=null){document.getElementById('savingsFeedback').textContent='Este retiro corresponde a un pago. Eliminá el pago en Gastos para revertir ambos registros.';return;}
+  if(!confirm(transaction.type==='transfer'?'¿Eliminar esta transferencia? Se revertirán ambos lados.':'¿Eliminar este movimiento y recalcular el saldo?'))return;
+  try{const next=savings.transactions.filter(t=>t.id!==id);savingsValidate(next);savings.transactions=next;save();renderSavings();document.getElementById('savingsFeedback').textContent='Movimiento eliminado. '+document.getElementById('syncStatus').textContent;}
+  catch(error){document.getElementById('savingsFeedback').textContent=error.message;}
 }
 
 checkSession();
