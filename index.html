@@ -260,6 +260,36 @@
 .payment-source-options button{background:var(--surface);color:var(--text2);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;min-height:44px;font:inherit;cursor:pointer}
 .payment-source-options button[aria-pressed="true"]{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);font-weight:600}
 .payment-source-options button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* ── Vista de escritorio (pantallas anchas): más espacio, panel lateral fijo y acciones con mouse ── */
+.layout{display:block}.layout-side{display:none}.exp-del-btn{display:none}
+.ing-cols,.res-cols{display:flex;flex-direction:column}.ing-col,.res-col{display:contents}
+.side-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.side-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.side-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;font-size:13px;color:var(--text2)}.side-row strong{color:var(--text);font-variant-numeric:tabular-nums;font-size:14px;font-weight:600}
+.side-row strong.cv-green{color:var(--green)}.side-row strong.cv-red{color:var(--red)}.side-row strong.cv-purple{color:var(--purple)}
+.side-total{border-top:1px solid var(--border);margin-top:6px;padding-top:10px}.side-total strong{font-size:16px}
+.side-note{display:block;color:var(--text3);font-size:11px;margin-top:4px}
+.side-link{margin-top:10px;width:100%;background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px;font:inherit;font-size:12px;cursor:pointer}.side-link:hover{border-color:var(--blue);color:var(--blue)}
+@media(min-width:1100px){
+  .container{max-width:1380px;padding:28px 36px 80px}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
+  .layout-side{display:block;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}
+  .tabs{max-width:720px}
+  .gastos-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px;align-items:start}
+  .gastos-col{min-width:0}
+  .ing-cols,.res-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px;align-items:start}
+  .ing-col,.res-col{display:block;min-width:0}
+  .layout>*{min-width:0}.cards{grid-template-columns:repeat(4,minmax(0,1fr))}.card-value{overflow-wrap:anywhere}
+  .sv-history{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.sv-history>.sv-movement{border-right:1px solid var(--border)}.sv-history>.sv-movement:nth-child(2n){border-right:0}
+  .sv-history>.empty-state{grid-column:1/-1}
+  .sv-accounts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(min-width:1100px) and (hover:hover){
+  .exp-card:hover .exp-del-btn,.exp-card:focus-within .exp-del-btn{display:inline-flex}
+  .exp-del-btn{align-items:center;justify-content:center;background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);width:30px;height:30px;color:var(--text3);cursor:pointer;font-size:13px;margin-left:6px}.exp-del-btn:hover{color:var(--red);border-color:var(--red-border)}
+}
+@media(min-width:1700px){.container{max-width:1560px}.layout{grid-template-columns:minmax(0,1fr) 380px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -286,6 +316,7 @@
   </div>
   <div class="cards" id="summaryCards"></div>
 
+  <div class="layout"><div class="layout-main">
   <div class="tabs">
     <button class="tab active" onclick="switchTab('gastos')">Gastos</button>
     <button class="tab" onclick="switchTab('ingresos')">Ingresos</button>
@@ -299,6 +330,7 @@
   <div class="tab-panel" id="tab-resumen"><div id="resumen-content"></div></div>
   <div class="tab-panel" id="tab-evolucion"><div id="evolucion-content"></div></div>
   <div class="tab-panel" id="tab-ahorros"><div id="ahorros-content"></div><p id="savingsFeedback" role="status" aria-live="polite"></p></div>
+  </div><aside class="layout-side" id="sidePanel" aria-label="Resumen rápido"></aside></div>
 </div>
 
 <dialog id="savingsDialog" class="sv-dialog" aria-labelledby="savingsDialogTitle">
@@ -558,7 +590,7 @@ const BASE_EXPENSES = [
 
 let expenses = JSON.parse(JSON.stringify(BASE_EXPENSES));
 
-const ing = { tc:6096.75, salarioUSD:13750, parteFijaBruta:54945055, parteFijaNeta:50000000, ivaCredito:0, gym:300000, prestamo:14769731, bonoUSD:0, bonoTC:6096.75, bonoByMonth:{}, ivaCreditoByMonth:{} };
+const ing = { tc:6096.75, salarioUSD:13750, parteFijaBruta:54945055, parteFijaNeta:50000000, ivaCredito:0, gym:300000, prestamo:14769731, bonoUSD:0, bonoTC:6096.75, bonoByMonth:{}, ivaCreditoByMonth:{}, aguinaldoByMonth:{} };
 const INITIAL_ING = JSON.parse(JSON.stringify(ing));
 function resetAppState(){ // evita que datos en memoria de una sesión pasen a otra cuenta
   expenses=JSON.parse(JSON.stringify(BASE_EXPENSES));
@@ -1078,7 +1110,7 @@ function submitExpensePayment(id,complete){
     const amount=complete?mAmt(expense)-paidOf(expense,curYear,curMonth):Number(document.getElementById('pa-'+id).value);
     if(complete&&amount===0)return;
     recordExpensePayment(id,amount,document.getElementById('pd-'+id).value||savingsToday(),complete?'Pago completo':document.getElementById('pn-'+id).value.trim(),document.getElementById('pw-'+id).value,document.getElementById('ps-'+id).value,document.getElementById('ps-account-'+id).value,document.getElementById('ps-debit-'+id).value,document.getElementById('ps-return-'+id).value!=='0');
-    save();render();toggleDetail(id);
+    save();render(); // el detalle queda cerrado al registrar el pago
   }catch(error){paymentError(id,error.message);}
 }
 function payComplete(id){submitExpensePayment(id,true);}
@@ -1165,7 +1197,7 @@ function returnsSectionHtml(){
   const pct=r.total?Math.min(100,Math.round(r.paid/r.total*100)):0,done=r.total>0&&r.pending===0;
   const undoLines=x=>savings.transactions.filter(t=>t.type==='refund'&&t.paymentId===x.payment.pid).map(t=>`<div class="ret-undo">↩ ${refundMoney(t.amount,x.account.currency)} · ${t.date.split('-').reverse().join('/')} <button type="button" onclick="refundUndo('${t.id}')">Deshacer</button></div>`).join('');
   const rows=r.items.map(x=>`<div class="ret-row${x.waived?' waived':''}"><div><strong>${savingsEscape(x.expense.name)}</strong><small>${savingsEscape(x.account.name)} · ${refundStatusText(x)}</small>${undoLines(x)}</div><div class="ret-actions">${refundButtonsHtml(x)}</div></div>`).join('');
-  return `<div class="section"><div class="section-head"><div class="section-title"><span class="badge badge-ret">Devolución</span><span>A tus cuentas de ahorro</span></div></div>
+  return `<div class="section section-wide"><div class="section-head"><div class="section-title"><span class="badge badge-ret">Devolución</span><span>A tus cuentas de ahorro</span></div></div>
     <div class="expense-list"><div class="exp-wrap"><div class="exp-card ${done?'completed':''}">
       <div class="exp-main"><div class="exp-info"><div class="exp-name">Devolución a ahorros</div><div class="exp-meta"><span class="dur-badge">${r.items.length} pago${r.items.length>1?'s':''} desde ahorros</span></div></div>
         <div class="exp-amounts"><div class="exp-total">${fmt(r.total)}</div><div class="exp-paid-lbl">${r.paid>0?fmt(r.paid)+' devuelto':''}</div></div></div>
@@ -1254,6 +1286,7 @@ function cardHtml(e){
         </div>
         ${amtCell}
         <button class="exp-toggle" id="tog-${e.id}" onclick="toggleDetail(${e.id})">Pagos${pays.length?' ('+pays.length+')':''}</button>
+        <button type="button" class="exp-del-btn" title="Eliminar gasto" aria-label="Eliminar ${savingsEscape(e.name)}" onclick="event.stopPropagation();delExpense(${e.id})">🗑</button>
       </div>
       ${ma!==0?`<div class="exp-progress">
         <div class="pbar"><div class="pfill ${done?'done':''}" style="width:${pct}%"></div></div>
@@ -1322,6 +1355,12 @@ const SECTIONS=[
   {key:'cesar-puntual',badge:'badge-puntual',badgeText:'Puntual',label:'Solo César',owner:'cesar',type:'puntual'},
 ];
 
+// Dos columnas por responsable (familiar | César): cada columna se apila sola, sin huecos aunque cambie la cantidad de gastos.
+function gastosCols(parts){
+  const col=owner=>parts.filter(p=>p.owner===owner).map(p=>p.html).join('');
+  return `<div class="gastos-cols"><div class="gastos-col">${col('familiar')}</div><div class="gastos-col">${col('cesar')}</div></div>`;
+}
+
 function renderSections(){
   // Auto-update IVA
   // Auto-update IVA — usa id 106 (gasto César "IVA")
@@ -1329,17 +1368,17 @@ function renderSections(){
   if(ivaExp){const{ivaNeto}=calcIng(); ivaExp.amount=Math.round(ivaNeto);}
 
   const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
-  document.getElementById('sections-gastos').innerHTML=returnsSectionHtml()+SECTIONS.map(s=>{
+  document.getElementById('sections-gastos').innerHTML=returnsSectionHtml()+gastosCols(SECTIONS.map(s=>{
     const items=vis.filter(e=>e.owner===s.owner&&e.type===s.type);
-    return `<div class="section">
+    return {owner:s.owner,html:`<div class="section">
       <div class="section-head">
         <div class="section-title"><span class="badge ${s.badge}">${s.badgeText}</span><span>${s.label}</span></div>
         <button class="add-btn" onclick="toggleAddForm('${s.key}')">+ Agregar</button>
       </div>
       ${addFormHtml(s.key,s.type)}
       <div class="expense-list">${items.length?items.map(cardHtml).join(''):'<div class="empty-state">Sin gastos este mes</div>'}</div>
-    </div>`;
-  }).join('');
+    </div>`};
+  }));
   setTimeout(attachSwipe,0);
 }
 
@@ -1364,6 +1403,14 @@ function setBonoUSD(val){ if(!ing.bonoByMonth)ing.bonoByMonth={}; if(!ing.bonoBy
 function setBonoTC(val){ if(!Number.isFinite(val)||val<=0||val===getBonoTC())return; if(!ing.bonoByMonth)ing.bonoByMonth={}; if(!ing.bonoByMonth[ingMKey()])ing.bonoByMonth[ingMKey()]={usd:0}; ing.bonoByMonth[ingMKey()].tc=val; }
 function setIvaCredito(val){ if(!ing.ivaCreditoByMonth)ing.ivaCreditoByMonth={}; ing.ivaCreditoByMonth[ingMKey()]=val; }
 
+// Aguinaldo: monto (Gs.) e IVA (Gs.) cargados a mano, por mes. Neto = monto − IVA.
+let aguinaldoOpen=false;
+function getAguinaldo(){ const a=(ing.aguinaldoByMonth||{})[ingMKey()]||{}; const gs=Number(a.gs),iva=Number(a.iva); return{gs:Number.isFinite(gs)&&gs>0?gs:0,iva:Number.isFinite(iva)&&iva>0?iva:0}; }
+function setAguinaldo(field,val){ if(field!=='gs'&&field!=='iva')return; if(!ing.aguinaldoByMonth)ing.aguinaldoByMonth={}; const k=ingMKey(); const cur=ing.aguinaldoByMonth[k]||{gs:0,iva:0}; cur[field]=Number.isFinite(val)&&val>0?Math.round(val):0; if(!cur.gs&&!cur.iva)delete ing.aguinaldoByMonth[k]; else ing.aguinaldoByMonth[k]=cur; }
+function toggleAguinaldo(){ aguinaldoOpen=!aguinaldoOpen; renderIngresos(); }
+function resetAguinaldoView(){ aguinaldoOpen=false; }
+function aguinaldoChanged(field,input){ setAguinaldo(field,parseDecimalInput(input.value)); save(); renderIngresos(); renderSummary(); renderResumen(); renderSidePanel(); }
+
 function calcIng(){
   const usdEnGs=ing.salarioUSD*getMonthlyTC();
   const parteVar=usdEnGs-ing.parteFijaBruta;
@@ -1373,22 +1420,26 @@ function calcIng(){
   const ivaGastoBono = bonoGs/11;
   const bonoNeto = bonoGs - ivaGastoBono;
 
-  const ivaGastoTotal = ivaGastoSalario + ivaGastoBono;
+  const ag=getAguinaldo(), aguinaldoGs=ag.gs, ivaGastoAguinaldo=Math.min(ag.iva,ag.gs), aguinaldoNeto=aguinaldoGs-ivaGastoAguinaldo;
+
+  const ivaGastoTotal = ivaGastoSalario + ivaGastoBono + ivaGastoAguinaldo;
   const ivaNeto=Math.max(0,ivaGastoTotal-getIvaCredito());
   const varNeta=parteVar; // el IVA no se descuenta del ingreso — se acredita en cuenta y se paga aparte
-  const neto=ing.parteFijaNeta+varNeta-ing.gym-ing.prestamo+bonoNeto;
-  return{usdEnGs,parteVar,ivaGasto:ivaGastoSalario,ivaGastoBono,bonoGs,bonoNeto,ivaGastoTotal,ivaNeto,varNeta,neto};
+  const neto=ing.parteFijaNeta+varNeta-ing.gym-ing.prestamo+bonoNeto+aguinaldoNeto;
+  return{usdEnGs,parteVar,ivaGasto:ivaGastoSalario,ivaGastoBono,bonoGs,bonoNeto,aguinaldoGs,ivaGastoAguinaldo,aguinaldoNeto,ivaGastoTotal,ivaNeto,varNeta,neto};
 }
 
 function renderIngresos(){
   const c=calcIng();
   document.getElementById('ingresos-content').innerHTML=`
-    <div class="ing-block">
+    <div class="ing-cols">
+    <div class="ing-col">
+    <div class="ing-block" style="order:1">
       <div class="ing-block-title">Tipo de cambio BCP</div>
       <div class="ing-row"><span class="ing-label">USD / Gs.</span><input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${fmtDecimal(getMonthlyTC())}" data-field="tc" data-fallback="${getMonthlyTC()}" onblur="fmtIngInput(this);renderIngresos()"></div>
       <div class="ing-note">TC independiente para el mes seleccionado · Los meses sin TC propio usan el valor anterior como referencia.</div>
     </div>
-    <div class="ing-block">
+    <div class="ing-block" style="order:2">
       <div class="ing-block-title">Composición del salario</div>
       <div class="ing-row"><span class="ing-label">Salario bruto</span><span class="ing-val">USD 13.750</span></div>
       <div class="ing-row"><span class="ing-label">Equivalente en Gs.</span><span class="ing-val blue">${fmt(c.usdEnGs)}</span></div>
@@ -1396,7 +1447,14 @@ function renderIngresos(){
       <div class="ing-row"><span class="ing-label">Parte variable</span><span class="ing-val green">${fmt(c.parteVar)}</span></div>
       <div class="ing-row"><span class="ing-label">Neto parte fija (post IPS)</span><span class="ing-val green">Gs. 50.000.000</span></div>
     </div>
-    <div class="ing-block">
+    <div class="ing-block" style="order:5">
+      <div class="ing-block-title">Descuentos del salario</div>
+      <div class="ing-row"><span class="ing-label">Gym</span><span class="ing-val red">− ${fmt(ing.gym)}</span></div>
+      <div class="ing-row"><span class="ing-label">Préstamo terreno</span><span class="ing-val red">− ${fmt(ing.prestamo)}</span></div>
+    </div>
+    </div>
+    <div class="ing-col">
+    <div class="ing-block" style="order:3">
       <div class="ing-block-title">Bono trimestral / semestral (USD)</div>
       <div class="ing-row">
         <span class="ing-label">Monto del bono (USD)</span>
@@ -1411,30 +1469,65 @@ function renderIngresos(){
       <div class="ing-row"><span class="ing-label">Neto del bono</span><span class="ing-val ${getBonoUSD()>0?'green':''}"">${fmt(c.bonoNeto)}</span></div>
       <div class="ing-note">${getBonoUSD()>0?'Bono cargado este mes':'Sin bono este mes · Cargalo cuando lo cobrás'}</div>
     </div>
-    <div class="ing-block">
+    <div class="ing-block" style="order:3">
+      <div class="ing-block-title">Aguinaldo</div>
+      ${(aguinaldoOpen||c.aguinaldoGs>0)?`
+      <div class="ing-row"><span class="ing-label">Monto del aguinaldo (Gs.)</span><input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${getAguinaldo().gs?fmtDecimal(getAguinaldo().gs):''}" placeholder="0" onblur="aguinaldoChanged('gs',this)"></div>
+      <div class="ing-row"><span class="ing-label">IVA del aguinaldo (Gs.)</span><input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${getAguinaldo().iva?fmtDecimal(getAguinaldo().iva):''}" placeholder="0" onblur="aguinaldoChanged('iva',this)"></div>
+      <div class="ing-row"><span class="ing-label">Neto del aguinaldo</span><span class="ing-val ${c.aguinaldoGs>0?'green':''}">${fmt(c.aguinaldoNeto)}</span></div>
+      <div class="ing-note">El IVA se suma al IVA a pagar del mes.${c.aguinaldoGs>0?'':' · Sin monto, no afecta el ingreso.'}</div>
+      ${c.aguinaldoGs>0?'':`<div style="padding:0 14px 12px"><button type="button" class="side-link" style="margin-top:0" onclick="toggleAguinaldo()">Ocultar</button></div>`}`:`
+      <div style="padding:12px 14px"><button type="button" class="side-link" style="margin-top:0" onclick="toggleAguinaldo()">+ Agregar aguinaldo</button></div>`}
+    </div>
+    <div class="ing-block" style="order:4">
       <div class="ing-block-title">IVA</div>
       <div class="ing-row"><span class="ing-label">IVA gasto salario (parte variable ÷ 11)</span><span class="ing-val red">− ${fmt(c.ivaGasto)}</span></div>
       <div class="ing-row"><span class="ing-label">IVA gasto bono (÷11)</span><span class="ing-val red">− ${fmt(c.ivaGastoBono)}</span></div>
+      ${c.ivaGastoAguinaldo>0?`<div class="ing-row"><span class="ing-label">IVA gasto aguinaldo</span><span class="ing-val red">− ${fmt(c.ivaGastoAguinaldo)}</span></div>`:''}
       <div class="ing-row"><span class="ing-label">IVA crédito</span><input class="ing-input" type="text" inputmode="decimal" enterkeyhint="done" value="${getIvaCredito() ? fmtDecimal(getIvaCredito()) : ''}" placeholder="0" data-field="ivaCredito" data-fallback="0" onblur="setIvaCredito(parseDecimalInput(this.value)||0);save();renderIngresos();renderSummary();renderResumen();"></div>
       <div class="ing-row"><span class="ing-label">IVA neto a pagar</span><span class="ing-val red">− ${fmt(c.ivaNeto)}</span></div>
     </div>
-    <div class="ing-block">
-      <div class="ing-block-title">Descuentos del salario</div>
-      <div class="ing-row"><span class="ing-label">Gym</span><span class="ing-val red">− ${fmt(ing.gym)}</span></div>
-      <div class="ing-row"><span class="ing-label">Préstamo terreno</span><span class="ing-val red">− ${fmt(ing.prestamo)}</span></div>
+    </div>
     </div>
     <div class="ing-block"><div class="ing-total-row"><span>Ingreso neto estimado</span><span style="color:var(--green)">${fmt(c.neto)}</span></div></div>`;
 }
 
 // ── SUMMARY CARDS ─────────────────────────────────────────────────────────────
 const SUMMARY_PRIVACY_KEY = 'tracker_summary_hidden';
-let summaryHidden = false;
-try { summaryHidden = localStorage.getItem(SUMMARY_PRIVACY_KEY) === 'true'; } catch (_) {}
+let summaryHidden = true; // al entrar, los datos siempre arrancan ocultos
 
 function toggleSummaryPrivacy(){
   summaryHidden = !summaryHidden;
   try { localStorage.setItem(SUMMARY_PRIVACY_KEY, String(summaryHidden)); } catch (_) {}
-  renderSummary();
+  renderSummary(); renderSidePanel();
+}
+
+// Panel lateral de la vista de escritorio (oculto en pantallas chicas): siempre a la vista, en cualquier pestaña.
+function renderSidePanel(){
+  const el=document.getElementById('sidePanel');if(!el)return;
+  const hide=summaryHidden,m=v=>hide?'****':fmt(v),sm=(v,c)=>savingsHidden?'****':savingsMoney(v,c);
+  const vis=expenses.filter(e=>isVisibleInMonth(e,curYear,curMonth));
+  const tot=vis.reduce((s,e)=>s+mAmt(e),0),pag=vis.reduce((s,e)=>s+paidOf(e,curYear,curMonth),0),extra=vis.reduce((s,e)=>s+extraPaidOf(e,curYear,curMonth),0);
+  const{neto}=calcIng(),ret=savingsReturnsFor(curYear,curMonth),disp=neto-tot+extra-ret.total,pend=Math.max(0,tot-pag)+ret.pending;
+  const balances=savingsValidate(savings.transactions),totals=Object.fromEntries(['PYG','USD'].map(c=>[c,savings.accounts.filter(a=>a.currency===c).reduce((s,a)=>s+balances[a.id],0)]));
+  const tcInfo=savingsTC(),tc=tcInfo.value,validTC=Number.isFinite(tc)&&tc>0,unified=validTC?Math.round(totals.PYG+totals.USD/100*tc):null;
+  const retPct=ret.total?Math.min(100,Math.round(ret.paid/ret.total*100)):0;
+  el.innerHTML=`<div class="side-card"><div class="side-title">${MONTHS_FULL[curMonth]} ${curYear}</div>
+    <div class="side-row"><span>Ingreso neto</span><strong class="cv-green">${m(neto)}</strong></div>
+    <div class="side-row"><span>Gastos del mes</span><strong>${m(tot)}</strong></div>
+    <div class="side-row"><span>Pendiente</span><strong class="cv-red">${m(pend)}</strong></div>
+    <div class="side-row side-total"><span>Disponible</span><strong class="${disp>=0?'cv-green':'cv-red'}">${m(disp)}</strong></div></div>
+    ${ret.items.length?`<div class="side-card"><div class="side-title">Devolución a ahorros</div>
+    <div class="side-row"><span>Total del mes</span><strong>${m(ret.total)}</strong></div>
+    <div class="side-row"><span>Devuelto</span><strong class="cv-green">${m(ret.paid)}</strong></div>
+    <div class="side-row"><span>Pendiente</span><strong class="cv-purple">${m(ret.pending)}</strong></div>
+    ${ret.total?`<div class="pbar"><div class="pfill ${ret.pending===0?'done':''}" style="width:${retPct}%"></div></div>`:''}
+    <button type="button" class="side-link" onclick="switchTab('gastos')">Ver detalle en Gastos</button></div>`:''}
+    <div class="side-card"><div class="side-title">Ahorros</div>
+    <div class="side-row"><span>Guaraníes</span><strong>${sm(totals.PYG,'PYG')}</strong></div>
+    <div class="side-row"><span>Dólares</span><strong>${sm(totals.USD,'USD')}</strong></div>
+    ${validTC?`<div class="side-row side-total"><span>Total ≈ Gs.</span><strong class="cv-green">${savingsHidden?'****':fmt(unified)}</strong></div><small class="side-note">1 USD = ${tc.toLocaleString('es-PY',{maximumFractionDigits:2})} Gs. · ${tcInfo.own?'TC de Ahorros':'TC del mes'}</small>`:''}
+    <button type="button" class="side-link" onclick="switchTab('ahorros')">Ir a Ahorros</button></div>`;
 }
 
 function renderSummary(){
@@ -1475,14 +1568,25 @@ function renderResumen(){
   const extraTotal=[...vis.filter(e=>e.owner==='familiar'),...vis.filter(e=>e.owner==='cesar')].reduce((s,e)=>s+extraPaidOf(e,curYear,curMonth),0);
   const{neto,ivaNeto}=calcIng(), ret=savingsReturnsFor(curYear,curMonth), pending=savingsLinkedPayments().filter(x=>x.pending>0), pendingBack=pending.reduce((s,x)=>s+x.pendingGs,0), disp=neto-tF-tC+extraTotal-ret.total;
   document.getElementById('resumen-content').innerHTML=`
-    <div class="resumen">
+    <div class="res-cols">
+    <div class="res-col">
+    <div class="resumen" style="order:1">
       <div class="res-row"><span>Ingreso neto</span><span style="color:var(--green)">${fmt(neto)}</span></div>
       <div class="res-row"><span>Gastos familiares</span><span style="color:var(--red)">− ${fmt(tF)}</span></div>
       <div class="res-row"><span>Gastos personales</span><span style="color:var(--red)">− ${fmt(tC)}</span></div>
       ${ret.total>0?`<div class="res-row"><span>Devolución a ahorros</span><span style="color:var(--red)">− ${fmt(ret.total)}</span></div>`:''}
       <div class="res-total"><span>Saldo disponible</span><span style="color:${disp>=0?'var(--green)':'var(--red)'}">${fmt(disp)}</span></div>
     </div>
-    <div class="resumen">
+    <div class="resumen" style="order:4">
+      <div class="res-section-title">Desglose</div>
+      <div class="res-row"><span style="color:var(--text2)">Fijos familiar</span><span>${fmt(vis.filter(e=>e.owner==='familiar'&&e.type==='fijo').reduce((s,e)=>s+mAmt(e),0))}</span></div>
+      <div class="res-row"><span style="color:var(--text2)">Variables familiar</span><span>${fmt(vis.filter(e=>e.owner==='familiar'&&e.type==='var').reduce((s,e)=>s+mAmt(e),0))}</span></div>
+      <div class="res-row"><span style="color:var(--text2)">Personales César (incl. IVA)</span><span>${fmt(tC)}</span></div>
+      <div class="res-row"><span style="color:var(--text2)">De los cuales, IVA neto a pagar</span><span style="color:var(--red)">${fmt(ivaNeto)}</span></div>
+    </div>
+    </div>
+    <div class="res-col">
+    <div class="resumen" style="order:2">
       <div class="res-section-title">Pagos registrados</div>
       <div class="res-row"><span style="color:var(--blue)">César</span><span style="color:var(--blue)">${fmt(pagCesar)}</span></div>
       <div class="res-row"><span style="color:var(--purple)">Adri</span><span style="color:var(--purple)">${fmt(pagAdri)}</span></div>
@@ -1491,17 +1595,12 @@ function renderResumen(){
       <div class="res-row"><span>Total pagado</span><span style="color:var(--green)">${fmt(pag)}</span></div>
       <div class="res-row"><span>Pendiente${ret.pending>0?' (incluye devolución a ahorros)':''}</span><span style="color:var(--red)">${fmt(Math.max(0,tF+tC-pag)+ret.pending)}</span></div>
     </div>
-    ${pending.length?`<div class="resumen">
+    ${pending.length?`<div class="resumen" style="order:3">
       <div class="res-section-title">Por devolver a ahorros</div>
       ${pending.map(x=>`<div class="res-row"><span>${savingsEscape(x.expense.name)} · ${savingsEscape(x.account.name)}</span><span style="color:var(--purple)">${refundMoney(x.pending,x.account.currency)}</span></div>`).join('')}
       <div class="res-row"><span>Total por devolver, todos los meses (equivalente en Gs.)</span><span style="color:var(--purple)">${fmt(pendingBack)}</span></div>
     </div>`:''}
-    <div class="resumen">
-      <div class="res-section-title">Desglose</div>
-      <div class="res-row"><span style="color:var(--text2)">Fijos familiar</span><span>${fmt(vis.filter(e=>e.owner==='familiar'&&e.type==='fijo').reduce((s,e)=>s+mAmt(e),0))}</span></div>
-      <div class="res-row"><span style="color:var(--text2)">Variables familiar</span><span>${fmt(vis.filter(e=>e.owner==='familiar'&&e.type==='var').reduce((s,e)=>s+mAmt(e),0))}</span></div>
-      <div class="res-row"><span style="color:var(--text2)">Personales César (incl. IVA)</span><span>${fmt(tC)}</span></div>
-      <div class="res-row"><span style="color:var(--text2)">De los cuales, IVA neto a pagar</span><span style="color:var(--red)">${fmt(ivaNeto)}</span></div>
+    </div>
     </div>`;
 }
 
@@ -1636,7 +1735,7 @@ function render(){
     prevBtn.style.opacity = atMin ? '0.25' : '1';
     prevBtn.style.cursor = atMin ? 'default' : 'pointer';
   }
-  renderSummary(); renderSections(); renderIngresos(); renderResumen(); renderSavings();
+  renderSummary(); renderSections(); renderIngresos(); renderResumen(); renderSavings(); renderSidePanel();
 }
 
 // Ahorros (versión 2): importes enteros en guaraníes y centavos de USD. Cuentas editables y devoluciones.
@@ -1651,8 +1750,7 @@ const SAVINGS_DEFAULT_ACCOUNTS = [
 const savingsNew = () => ({version:2, accounts:SAVINGS_DEFAULT_ACCOUNTS.map(a=>({...a})), transactions:[]});
 let savings = savingsNew();
 let savingsFilter = '';
-let savingsHidden = false;
-try { savingsHidden = localStorage.getItem('tracker_savings_hidden') === 'true'; } catch (_) {}
+let savingsHidden = true; // al entrar, los datos siempre arrancan ocultos
 const savingsAccount = id => savings.accounts.find(a=>a.id===id);
 const savingsActiveAccounts = () => savings.accounts.filter(a=>!a.archived);
 const savingsToday = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
@@ -1778,6 +1876,7 @@ function renderSavings(){
       const linked=t.paymentId!=null;
       return `<article class="sv-movement"><div><span class="sv-kind ${t.type}">${labels[t.type]}</span><div class="sv-movement-title">${title}</div><small>${t.date.split('-').reverse().join('/')}${t.note?' · '+savingsEscape(t.note):''}</small></div><div class="sv-movement-value"><strong>${t.type==='withdrawal'||isTransfer?'−':'+'} ${money(t.amount,account.currency)}</strong>${isTransfer?`<small>+ ${money(t.received,savingsAccount(t.to).currency)}</small>`:''}${linked?`<small>${t.type==='refund'?'Devolución de un pago · se gestiona en Gastos':'Vinculado a un pago en Gastos'}</small>`:`<button type="button" class="sv-delete" onclick="savingsDelete('${savingsEscape(t.id)}')">Eliminar</button>`}</div></article>`;
     }).join(''):'<div class="empty-state">Todavía no hay movimientos en esta cuenta.</div>'}</div>`;
+  if(typeof renderSidePanel==='function')renderSidePanel();
 }
 let savingsPendingOpen=false;
 function savingsTogglePending(){savingsPendingOpen=!savingsPendingOpen;renderSavings();}
