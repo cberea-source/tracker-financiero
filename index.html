@@ -241,6 +241,11 @@
 .ret-row small{display:block;color:var(--text2);font-size:11px;margin-top:3px}.ret-row strong{font-size:13px;font-weight:500}.ret-actions{display:flex;gap:6px;flex-wrap:wrap}
 .ret-actions button{background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font:inherit;font-size:12px;cursor:pointer}.ret-actions button.primary{background:var(--blue);color:var(--bg);border-color:var(--blue);font-weight:600}
 .ret-undo{font-size:11px;color:var(--text2);margin-top:4px}.ret-undo button{background:none;border:0;color:var(--blue);font:inherit;font-size:11px;cursor:pointer;padding:0 0 0 6px;text-decoration:underline}
+.sv-account{grid-template-columns:minmax(0,1fr) auto 32px 32px}
+.sv-tc{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0 4px}.sv-tc label{width:100%;font-size:12px;color:var(--text2)}
+.sv-tc input{flex:1;min-width:120px;max-width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:10px;font:inherit;font-size:16px}
+.ret-toggle{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
+.ret-toggle button{background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
 @media(max-width:600px){.sv-totals,.sv-accounts{grid-template-columns:1fr}.sv-total strong{font-size:22px}.sv-account strong{font-size:13px}.sv-movement{padding:12px}.sv-button{min-height:44px}}
 
 
@@ -338,6 +343,21 @@
   </form>
   <p id="accountsError" class="sv-error" role="alert"></p>
   <div class="sv-form-actions"><button type="button" class="sv-button" onclick="accountsClose()">Cerrar</button></div>
+</dialog>
+
+<dialog id="balanceDialog" class="sv-dialog" aria-labelledby="balanceTitle">
+  <form id="balanceForm" onsubmit="balanceSubmit(event)">
+    <h3 id="balanceTitle">Actualizar saldo</h3>
+    <input type="hidden" name="account">
+    <p class="sv-help" id="balanceCurrent"></p>
+    <label for="bl-balance">Saldo real de hoy</label><input id="bl-balance" name="balance" inputmode="numeric" enterkeyhint="done" autocomplete="off" required oninput="balancePreview()">
+    <label for="bl-date">Fecha</label><input id="bl-date" name="date" type="date" required onchange="balancePreview()">
+    <label for="bl-note">Nota (opcional)</label><input id="bl-note" name="note" maxlength="200" autocomplete="off">
+    <p class="sv-help" id="balancePreview" role="status"></p>
+    <p class="sv-help">La diferencia se registra sola como «gastos varios» (si el saldo bajó) o «ingresos varios» (si subió). No cambia el Disponible mensual.</p>
+    <p id="balanceError" class="sv-error" role="alert"></p>
+    <div class="sv-form-actions"><button type="button" class="sv-button" onclick="balanceClose()">Cancelar</button><button type="submit" class="sv-button sv-primary">Actualizar saldo</button></div>
+  </form>
 </dialog>
 
 <!-- Login screen -->
@@ -1138,6 +1158,8 @@ function refundControlsHtml(expenseId,pid,key){
   return `<div class="pay-refund"><span>${refundStatusText(item)} · ${savingsEscape(item.account.name)} · se gestiona en «Devolución a ahorros», arriba en Gastos</span></div>`;
 }
 // Tarjeta "Devolución a ahorros" del mes en Gastos: un gasto más que resta del Disponible.
+let returnsOpen=false;
+function returnsToggle(){returnsOpen=!returnsOpen;render();}
 function returnsSectionHtml(){
   const r=savingsReturnsFor(curYear,curMonth);if(!r.items.length)return'';
   const pct=r.total?Math.min(100,Math.round(r.paid/r.total*100)):0,done=r.total>0&&r.pending===0;
@@ -1148,7 +1170,8 @@ function returnsSectionHtml(){
       <div class="exp-main"><div class="exp-info"><div class="exp-name">Devolución a ahorros</div><div class="exp-meta"><span class="dur-badge">${r.items.length} pago${r.items.length>1?'s':''} desde ahorros</span></div></div>
         <div class="exp-amounts"><div class="exp-total">${fmt(r.total)}</div><div class="exp-paid-lbl">${r.paid>0?fmt(r.paid)+' devuelto':''}</div></div></div>
       ${r.total>0?`<div class="exp-progress"><div class="pbar"><div class="pfill ${done?'done':''}" style="width:${pct}%"></div></div><div class="plabels"><span>${pct}% devuelto</span><span>${done?'<span style="color:var(--green)">✓ Completo</span>':fmt(r.pending)+' pendiente'}</span></div></div>`:''}
-      <div class="ret-list">${rows}</div>
+      <div class="ret-toggle"><span>${r.items.filter(x=>x.pending>0).length} pendiente${r.items.filter(x=>x.pending>0).length===1?'':'s'} de ${r.items.length}</span><button type="button" aria-expanded="${returnsOpen}" onclick="returnsToggle()">${returnsOpen?'Ocultar detalle':'Ver detalle'}</button></div>
+      ${returnsOpen?`<div class="ret-list">${rows}</div>`:''}
     </div></div></div></div>`;
 }
 function undoSavingsRefund(transactionId){
@@ -1668,6 +1691,7 @@ function savingsValidate(transactions,accounts=savings.accounts){
     ids.add(t.id);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(t.date)||!Number.isFinite(Date.parse(t.date))||new Date(t.date).toISOString().slice(0,10)!==t.date) throw Error('Elegí una fecha válida.');
     if(!Number.isSafeInteger(t.amount)||t.amount<=0) throw Error('El importe debe ser mayor a cero.');
+    if(t.adjust!==undefined&&typeof t.adjust!=='boolean') throw Error('Hay un movimiento de ahorros inválido o duplicado.');
     if(t.type==='opening'&&seen.has(t.account)) throw Error('El saldo inicial debe ser el primer movimiento de esa cuenta.');
     if(t.type==='withdrawal'&&t.paymentId!=null) debits.set(t.paymentId,t);
     if(t.type==='refund'){
@@ -1693,6 +1717,19 @@ function savingsValidate(transactions,accounts=savings.accounts){
   for(const currency of ['PYG','USD']) if(!Number.isSafeInteger(accounts.filter(a=>a.currency===currency).reduce((sum,a)=>sum+balances[a.id],0))) throw Error('El total supera el rango permitido.');
   return balances;
 }
+// TC propio de Ahorros (opcional): si no se cargó, se usa el TC del mes de Ingresos.
+function savingsParseTC(text){
+  const t=String(text).trim();
+  const n=/^\d+\.\d{1,2}$/.test(t)?parseFloat(t):parseFloat(t.replace(/\./g,'').replace(',','.'));
+  if(!Number.isFinite(n)||n<1000||n>20000) throw Error('Ingresá un tipo de cambio razonable, por ejemplo 7.450 (entre 1.000 y 20.000).');
+  return n;
+}
+function savingsTC(){
+  const own=savings.tc&&Number(savings.tc.value);
+  if(Number.isFinite(own)&&own>0) return {value:own,date:savings.tc.date||'',own:true};
+  return {value:Number(getMonthlyTC()),date:'',own:false};
+}
+function savingsCleanTC(tc){return tc&&Number.isFinite(Number(tc.value))&&Number(tc.value)>0?{value:Number(tc.value),date:typeof tc.date==='string'?tc.date:''}:undefined;}
 function savingsHydrate(value){
   if(value==null)return savingsNew();
   if(value.version===1){ // datos anteriores: cuentas fijas, sin devoluciones
@@ -1703,7 +1740,8 @@ function savingsHydrate(value){
   if(value.version!==2)throw Error('Versión de ahorros no compatible.');
   savingsValidateAccounts(value.accounts);
   savingsValidate(value.transactions,value.accounts);
-  return {version:2,accounts:value.accounts,transactions:value.transactions};
+  const tc=savingsCleanTC(value.tc);
+  return {version:2,accounts:value.accounts,transactions:value.transactions,...(tc?{tc}:{})};
 }
 function savingsTogglePrivacy(){
   savingsHidden=!savingsHidden;
@@ -1720,25 +1758,85 @@ function renderSavings(){
   const pendingOf=id=>pendingItems.filter(x=>x.account.id===id).reduce((s,x)=>s+x.pending,0);
   const pendingTotal=c=>pendingItems.filter(x=>x.account.currency===c).reduce((s,x)=>s+x.pending,0);
   const totals=Object.fromEntries(['PYG','USD'].map(c=>[c,savings.accounts.filter(a=>a.currency===c).reduce((s,a)=>s+balances[a.id],0)]));
-  const tc=Number(getMonthlyTC());
+  const tcInfo=savingsTC(),tc=tcInfo.value;
   const validTC=Number.isFinite(tc)&&tc>0;
   const combined=validTC?{PYG:Math.round(totals.PYG+totals.USD/100*tc),USD:Math.round(totals.USD+totals.PYG/tc*100)}:null;
   const transactions=savings.transactions.map((t,i)=>({t,i})).filter(({t})=>!savingsFilter||t.account===savingsFilter||t.to===savingsFilter).sort((a,b)=>b.t.date.localeCompare(a.t.date)||b.i-a.i);
   root.innerHTML=`<div class="sv-heading"><div><h2>Ahorros</h2><p>Saldo acumulado · separado de tu presupuesto mensual</p></div><button type="button" class="sv-button" onclick="savingsTogglePrivacy()" aria-pressed="${savingsHidden}">${savingsHidden?'Mostrar':'Ocultar'} saldos</button></div>
     <div class="sv-totals">${['PYG','USD'].map(c=>`<div class="sv-total"><span>${c==='PYG'?'Total en guaraníes':'Total en dólares'}</span><strong>${money(totals[c],c)}</strong><small>${validTC?`Total de ahorros en ${c==='PYG'?'Gs.':'USD'}: ≈ ${money(combined[c],c)}`:'Ingresá un TC válido en Ingresos para ver el total unificado.'}</small>${pendingTotal(c)>0?`<small class="sv-pending">Devolución pendiente: + ${money(pendingTotal(c),c)} · total con devolución: ${money(totals[c]+pendingTotal(c),c)}</small>`:''}</div>`).join('')}</div>
-    <p class="sv-help">${validTC?`Equivalencias estimadas · TC del mes seleccionado: 1 USD = ${savingsEscape(tc.toLocaleString('es-PY',{maximumFractionDigits:4}))} Gs. · Incluyen tus ahorros en ambas monedas.`:'La conversión usa el tipo de cambio del mes seleccionado en Ingresos.'}</p>
+    <form class="sv-tc" onsubmit="savingsSetTC(event)"><label for="sv-tc-input">TC de tus ahorros (Gs. por USD)</label><input id="sv-tc-input" name="tc" inputmode="decimal" enterkeyhint="done" autocomplete="off" value="${validTC?savingsEscape(tc.toLocaleString('es-PY',{maximumFractionDigits:2})):''}" placeholder="Ej. 7.450"><button type="submit" class="sv-button sv-primary">Actualizar TC</button>${tcInfo.own?`<button type="button" class="sv-button" onclick="savingsClearTC()">Usar el del mes</button>`:''}</form>
+    <p class="sv-help">${validTC?`Equivalencias estimadas con 1 USD = ${savingsEscape(tc.toLocaleString('es-PY',{maximumFractionDigits:4}))} Gs. · ${tcInfo.own?'TC propio de Ahorros'+(tcInfo.date?' actualizado el '+tcInfo.date.split('-').reverse().join('/'):''):'TC del mes seleccionado en Ingresos'} · Incluyen tus ahorros en ambas monedas.`:'Cargá un tipo de cambio para ver el total unificado.'}</p>
     <div class="sv-toolbar"><h3>Mis cuentas</h3><div class="sv-toolbar-actions"><button type="button" class="sv-button" onclick="accountsOpen()">Gestionar cuentas</button><button type="button" class="sv-button sv-primary" onclick="savingsOpen()">+ Registrar movimiento</button></div></div>
-    <div class="sv-accounts">${['PYG','USD'].map(c=>`<section class="sv-account-group"><h4>${c==='PYG'?'Guaraníes · Gs.':'Dólares · USD'}</h4>${active.filter(a=>a.currency===c).map(a=>`<div class="sv-account"><button type="button" class="sv-account-name" onclick="savingsSetFilter('${a.id}')">${savingsEscape(a.name)}</button><div class="sv-account-val"><strong>${money(balances[a.id],c)}</strong>${pendingOf(a.id)>0?`<small class="sv-pending">+ ${money(pendingOf(a.id),c)} por devolver</small>`:''}</div><button type="button" class="sv-add" aria-label="Registrar movimiento en ${savingsEscape(a.name)}" onclick="savingsOpen('${a.id}')">+</button></div>`).join('')}</section>`).join('')}</div>
-    ${pendingItems.length?`<div class="sv-toolbar"><h3>Devolución</h3></div><p class="sv-help">Pagos que hiciste desde estas cuentas y todavía tenés que devolver. La devolución se registra en Gastos → Devolución a ahorros y acá se refleja sola: el importe vuelve a la misma cuenta.</p><div class="sv-history sv-pending-list">${pendingItems.map(x=>`<article class="sv-movement"><div><span class="sv-kind refund">Por devolver</span><div class="sv-movement-title">${savingsEscape(x.account.name)}</div><small>${savingsEscape(x.expense.name)}${x.refunded>0?' · ya devuelto '+money(x.refunded,x.account.currency):''}</small></div><div class="sv-movement-value"><strong>${money(x.pending,x.account.currency)}</strong></div></article>`).join('')}</div>`:''}
+    <div class="sv-accounts">${['PYG','USD'].map(c=>`<section class="sv-account-group"><h4>${c==='PYG'?'Guaraníes · Gs.':'Dólares · USD'}</h4>${active.filter(a=>a.currency===c).map(a=>`<div class="sv-account"><button type="button" class="sv-account-name" onclick="savingsSetFilter('${a.id}')">${savingsEscape(a.name)}</button><div class="sv-account-val"><strong>${money(balances[a.id],c)}</strong>${pendingOf(a.id)>0?`<small class="sv-pending">+ ${money(pendingOf(a.id),c)} por devolver</small>`:''}</div><button type="button" class="sv-add" title="Actualizar saldo" aria-label="Actualizar saldo de ${savingsEscape(a.name)}" onclick="balanceOpen('${a.id}')">⟳</button><button type="button" class="sv-add" title="Registrar movimiento" aria-label="Registrar movimiento en ${savingsEscape(a.name)}" onclick="savingsOpen('${a.id}')">+</button></div>`).join('')}</section>`).join('')}</div>
+    ${pendingItems.length?`<div class="sv-toolbar"><h3>Devolución</h3><button type="button" class="sv-button" aria-expanded="${savingsPendingOpen}" onclick="savingsTogglePending()">${savingsPendingOpen?'Ocultar detalle':'Ver detalle ('+pendingItems.length+')'}</button></div><p class="sv-help">${['PYG','USD'].filter(c=>pendingTotal(c)>0).map(c=>'Por devolver en '+(c==='PYG'?'guaraníes':'dólares')+': <strong>'+money(pendingTotal(c),c)+'</strong>').join(' · ')} · Se registra en Gastos → Devolución a ahorros y acá se refleja sola: el importe vuelve a la misma cuenta.</p>${savingsPendingOpen?`<div class="sv-history sv-pending-list">${pendingItems.map(x=>`<article class="sv-movement"><div><span class="sv-kind refund">Por devolver</span><div class="sv-movement-title">${savingsEscape(x.account.name)}</div><small>${savingsEscape(x.expense.name)}${x.refunded>0?' · ya devuelto '+money(x.refunded,x.account.currency):''}</small></div><div class="sv-movement-value"><strong>${money(x.pending,x.account.currency)}</strong></div></article>`).join('')}</div>`:''}`:''}
     ${!savings.transactions.length?'<p class="sv-help">Para empezar, cargá el saldo inicial de cada cuenta. Las cuentas sin saldo pueden quedar en cero.</p>':''}
     <div class="sv-toolbar"><h3>Movimientos</h3><label class="sv-filter">Cuenta <select onchange="savingsSetFilter(this.value)"><option value="">Todas</option>${savings.accounts.map(a=>`<option value="${a.id}" ${a.id===savingsFilter?'selected':''}>${savingsEscape(a.name)}${a.archived?' (archivada)':''}</option>`).join('')}</select></label></div>
     <p class="sv-help">Historial completo · los saldos incluyen todos los movimientos registrados.</p>
     <div class="sv-history">${transactions.length?transactions.map(({t})=>{
-      const account=savingsAccount(t.account),isTransfer=t.type==='transfer',labels={opening:'Saldo inicial',deposit:'Ingreso',withdrawal:'Retiro / gasto',transfer:'Transferencia',refund:'Devolución'};
+      const account=savingsAccount(t.account),isTransfer=t.type==='transfer',labels={opening:'Saldo inicial',deposit:t.adjust?'Ajuste de saldo':'Ingreso',withdrawal:t.adjust?'Ajuste de saldo':'Retiro / gasto',transfer:'Transferencia',refund:'Devolución'};
       const title=isTransfer?savingsEscape(account.name)+' → '+savingsEscape(savingsAccount(t.to).name):savingsEscape(account.name);
       const linked=t.paymentId!=null;
       return `<article class="sv-movement"><div><span class="sv-kind ${t.type}">${labels[t.type]}</span><div class="sv-movement-title">${title}</div><small>${t.date.split('-').reverse().join('/')}${t.note?' · '+savingsEscape(t.note):''}</small></div><div class="sv-movement-value"><strong>${t.type==='withdrawal'||isTransfer?'−':'+'} ${money(t.amount,account.currency)}</strong>${isTransfer?`<small>+ ${money(t.received,savingsAccount(t.to).currency)}</small>`:''}${linked?`<small>${t.type==='refund'?'Devolución de un pago · se gestiona en Gastos':'Vinculado a un pago en Gastos'}</small>`:`<button type="button" class="sv-delete" onclick="savingsDelete('${savingsEscape(t.id)}')">Eliminar</button>`}</div></article>`;
     }).join(''):'<div class="empty-state">Todavía no hay movimientos en esta cuenta.</div>'}</div>`;
+}
+let savingsPendingOpen=false;
+function savingsTogglePending(){savingsPendingOpen=!savingsPendingOpen;renderSavings();}
+function savingsSetTC(event){
+  event.preventDefault();
+  try{
+    if(loadFailed)throw Error('Reintentá la carga de tus datos antes de cambiar el tipo de cambio.');
+    savings.tc={value:savingsParseTC(event.target.elements.tc.value),date:savingsToday()};
+    save();renderSavings();document.getElementById('savingsFeedback').textContent='TC de ahorros actualizado. '+document.getElementById('syncStatus').textContent;
+  }catch(error){document.getElementById('savingsFeedback').textContent=error.message;}
+}
+function savingsClearTC(){
+  if(loadFailed){document.getElementById('savingsFeedback').textContent='Reintentá la carga de datos antes de cambiar el tipo de cambio.';return;}
+  delete savings.tc;save();renderSavings();document.getElementById('savingsFeedback').textContent='Ahora se usa el TC del mes de Ingresos.';
+}
+// ── Actualizar saldo: se ingresa el saldo real y la app registra la diferencia como ajuste ──
+function savingsParseBalance(text,currency){
+  const raw=String(text).trim();
+  if(/^0+(,0{1,2})?$/.test(raw))return 0;
+  return savingsParse(raw,currency);
+}
+function savingsAdjustmentFor(accountId,balanceText,date=savingsToday()){
+  const account=savingsAccount(accountId);if(!account)throw Error('Elegí una cuenta.');
+  if(date>savingsToday())throw Error('Usá la fecha de hoy o una anterior.');
+  const target=savingsParseBalance(balanceText,account.currency),current=savingsValidate(savings.transactions)[accountId],diff=target-current;
+  if(diff===0)throw Error('El saldo ya coincide con el que ingresaste.');
+  return {id:crypto.randomUUID(),type:diff<0?'withdrawal':'deposit',account:accountId,date,amount:Math.abs(diff),adjust:true,note:diff<0?'Ajuste de saldo · gastos varios':'Ajuste de saldo · ingresos varios'};
+}
+function balanceOpen(accountId){
+  savingsFocusBefore=document.activeElement;
+  const form=document.getElementById('balanceForm'),account=savingsAccount(accountId);
+  form.reset();form.elements.account.value=accountId;
+  form.elements.date.value=savingsToday();form.elements.date.max=savingsToday();
+  form.elements.balance.inputMode=account.currency==='PYG'?'numeric':'decimal';
+  form.elements.balance.placeholder=account.currency==='PYG'?'Ej. 700.000':'Ej. 1.250,50';
+  document.getElementById('balanceTitle').textContent='Actualizar saldo · '+account.name;
+  document.getElementById('balanceCurrent').textContent='Saldo en la app: '+(savingsHidden?'****':savingsMoney(savingsValidate(savings.transactions)[accountId],account.currency));
+  document.getElementById('balanceError').textContent='';document.getElementById('balancePreview').textContent='';
+  document.getElementById('balanceDialog').showModal();form.elements.balance.focus();
+}
+function balanceClose(){document.getElementById('balanceDialog').close();savingsFocusBefore?.focus();}
+function balancePreview(){
+  const form=document.getElementById('balanceForm'),preview=document.getElementById('balancePreview');
+  if(!form.elements.balance.value.trim()){preview.textContent='';return;}
+  try{
+    const t=savingsAdjustmentFor(form.elements.account.value,form.elements.balance.value,form.elements.date.value||savingsToday()),c=savingsAccount(t.account).currency;
+    preview.textContent=(t.type==='withdrawal'?'Se registra un ajuste de − ':'Se registra un ajuste de + ')+(savingsHidden?'****':savingsMoney(t.amount,c))+(t.type==='withdrawal'?' (gastos varios).':' (ingresos varios).');
+  }catch(error){preview.textContent=error.message;}
+}
+function balanceSubmit(event){
+  event.preventDefault();const form=document.getElementById('balanceForm');
+  try{
+    if(loadFailed)throw Error('Primero reintentá la carga de tus datos antes de actualizar un saldo.');
+    const t=savingsAdjustmentFor(form.elements.account.value,form.elements.balance.value,form.elements.date.value||savingsToday());
+    const note=form.elements.note.value.trim().slice(0,200);if(note)t.note=t.note+' · '+note;
+    const next=[...savings.transactions,t];savingsValidate(next);
+    savings.transactions=next;save();balanceClose();renderSavings();
+    document.getElementById('savingsFeedback').textContent='Saldo actualizado. '+document.getElementById('syncStatus').textContent;
+  }catch(error){document.getElementById('balanceError').textContent=error.message;}
 }
 let savingsFocusBefore=null;
 function savingsOpen(account=''){
@@ -1770,7 +1868,7 @@ function savingsFormUpdate(){
   form.elements.received.placeholder=target.currency==='PYG'?'Ej. 1.250.000':'Ej. 1.250,50';
   form.elements.received.inputMode=target.currency==='PYG'?'numeric':'decimal';
   const balance=savingsValidate(savings.transactions)[account.id];
-  document.getElementById('savingsFormHelp').textContent=form.elements.type.value==='opening'?'Saldo que ya tenías antes de empezar a registrar movimientos.':transfer?'Se descuenta de origen y se suma a destino en un solo movimiento.':'Este movimiento no cambia el Disponible mensual.';
+  document.getElementById('savingsFormHelp').textContent=form.elements.type.value==='opening'?'Saldo que ya tenías antes de empezar a registrar movimientos.':transfer?'Se descuenta de origen y se suma a destino en un solo movimiento.'+(cross&&Number.isFinite(savingsTC().value)?' TC de referencia de tus ahorros: '+savingsTC().value.toLocaleString('es-PY',{maximumFractionDigits:2})+'.':''):'Este movimiento no cambia el Disponible mensual.';
   document.getElementById('savingsAccountBalance').textContent='Saldo de la cuenta: '+(savingsHidden?'****':savingsMoney(balance,account.currency));
 }
 function savingsSubmit(event){
