@@ -753,7 +753,7 @@ async function loadFromCloud(retryCount=0){
     if(row && row.data){
       const d = row.data;
       if(d.expenses) expenses = d.expenses;
-      expenses.forEach(e=>{ if(e.id===105&&e.name==='Ahorro programado') e.name='Ahorro del período'; });
+      expenses.forEach(e=>{ if(e.id===105){ if(e.name==='Ahorro programado') e.name='Ahorro del período'; delete e.endYear; delete e.endMonth; } }); // el ahorro del período vuelve a mostrarse en todos los meses
       if(d.ing) Object.assign(ing, d.ing);
       if(d.curYear) curYear = d.curYear;
       if(d.curMonth!=null) curMonth = d.curMonth;
