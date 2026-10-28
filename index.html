@@ -611,7 +611,7 @@ let isOnline = navigator.onLine;
 let loadFailed = true; // guardado bloqueado hasta completar la carga inicial
 
 window.addEventListener('online', ()=>{ isOnline=true; setSyncStatus('Sincronizando...'); flushSave(); });
-window.addEventListener('offline', ()=>{ isOnline=false; setSyncStatus('Sin conexión · guardado local'); });
+window.addEventListener('offline', ()=>{ isOnline=false; setSyncStatus('Sin conexión · los cambios quedan en este dispositivo'); });
 
 function setSyncStatus(msg){
   const el=document.getElementById('syncStatus');
@@ -675,7 +675,7 @@ async function onLoggedIn(){
     showLoadErrorBanner();
   }
   render();
-  setSyncStatus(isOnline?(loadFailed?'⚠️ No se pudo cargar tus datos guardados':'Sincronizado'):'Sin conexión · guardado local');
+  if(!saveTimeout) setSyncStatus(isOnline?(loadFailed?'⚠️ No se pudo cargar tus datos guardados':'Sincronizado'):'Sin conexión');
 }
 
 let sessionHandled = false;
@@ -787,6 +787,7 @@ function syncNewId(){return Math.max(nid,Date.now()*1000+Math.floor(Math.random(
 // Guardado combinado: trae la base, combina con lo de este dispositivo y guarda
 // solo si nadie guardó en el medio. Si otro dispositivo guardó, vuelve a combinar.
 class SyncAuthError extends Error{}
+class SyncUpdateRequired extends Error{} // la base rechaza versiones viejas de la app
 async function syncRequest(path,options={}){
   if(!currentToken) throw new Error('Sin token de sesión');
   const res = await withTimeout(
@@ -818,7 +819,11 @@ async function syncWrite(data,remote){
   }
   const rev = remote.rev==null?'data->>rev=is.null':`data->>rev=eq.${encodeURIComponent(remote.rev)}`;
   const res = await syncRequest(`tracker_data?user_id=eq.${currentUser.id}&${rev}&select=user_id`,{method:'PATCH',headers:{'Prefer':'return=representation'},body:JSON.stringify({data})});
-  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  if(!res.ok){
+    const body = await res.text().catch(()=>'');
+    if(body.includes('TRACKER_UPDATE_REQUIRED')) throw new SyncUpdateRequired(body);
+    throw new Error(`HTTP ${res.status}`);
+  }
   const rows = await res.json();
   return Array.isArray(rows)&&rows.length===1;
 }
@@ -835,7 +840,7 @@ function syncCombine(base,local,remote){
   try{ savingsHydrate(merged.savings); return merged; }catch(e){ console.error('Merge inválido', e); return null; }
 }
 function syncConflict(remote){
-  syncApply(remote); syncBase = syncClone(remote); render();
+  syncApply(remote); syncBase = syncClone(remote); syncClearPending(); render();
   setSyncStatus('⚠️ Conflicto con otro dispositivo');
   alert('Otro dispositivo cambió los mismos datos y no se pudieron combinar con tu último cambio. Se cargó la versión guardada: revisá y volvé a hacer ese cambio.');
 }
@@ -860,8 +865,9 @@ async function flushSave(){
       const now = syncLocal(), touched = !syncSame(now, local), incoming = !syncSame(toWrite, local);
       if(touched){ const again = syncCombine(local, now, next); if(again) syncApply(again); saveQueued = true; }
       else if(incoming) syncApply(next);
+      if(touched) syncKeepPending(); else syncClearPending(); // lo pendiente se borra solo cuando la base tiene todo
       if(incoming){ render(); setSyncStatus('Sincronizado ✓ · con cambios de otro dispositivo'); }
-      else setSyncStatus(isOnline?'Sincronizado ✓':'Sin conexión · guardado local');
+      else setSyncStatus('Sincronizado ✓');
       break;
     }
     consecutiveAuthFailures = 0;
@@ -889,8 +895,13 @@ async function flushSave(){
       showSessionExpiredBanner();
       return;
     }
+    if(e instanceof SyncUpdateRequired){
+      setSyncStatus('⚠️ Hay una versión nueva de la app — recargá la página');
+      alert('Hay una versión nueva de la app. Recargá la página para seguir guardando: tus cambios quedan guardados en este dispositivo y se suben al recargar.');
+      return;
+    }
     console.error('Save error', e);
-    setSyncStatus('Sin conexión con el servidor — reintentando...');
+    setSyncStatus(syncReadPending()?'Sin conexión · guardado en este dispositivo, se sube al volver la señal':'Sin conexión con el servidor — reintentando...');
     saveTimeout = setTimeout(flushSave, 5000);
   }finally{
     saveInFlight = false;
@@ -914,6 +925,34 @@ async function syncPull(){
 }
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') syncPull(); });
 window.addEventListener('focus', ()=>syncPull());
+// ── Cambios sin subir guardados en este dispositivo ──
+// Cada cambio queda también en el teléfono o la compu hasta que la base lo confirma. Si cerrás la app sin señal,
+// al volver a abrirla se combinan con lo que haya en la base, igual que un guardado normal.
+const syncPendingKey=()=>currentUser?'tracker_pending_v1_'+currentUser.id:null;
+function syncKeepPending(){
+  const key=syncPendingKey();if(!key)return false;
+  try{localStorage.setItem(key,JSON.stringify({base:syncBase,local:syncLocal(),at:new Date().toISOString()}));return true;}
+  catch(e){console.error('No se pudo guardar en el dispositivo',e);return false;}
+}
+function syncClearPending(){const key=syncPendingKey();if(key)try{localStorage.removeItem(key);}catch(_){}}
+function syncReadPending(){
+  const key=syncPendingKey();if(!key)return null;
+  try{const p=JSON.parse(localStorage.getItem(key)||'null');return p&&syncIsObj(p.local)?p:null;}catch(_){return null;}
+}
+// Se llama al terminar la carga. Devuelve true si había cambios sin subir y se recuperaron.
+function syncRecoverPending(remote){
+  const pending=syncReadPending();if(!pending)return false;
+  const{curYear:_a,curMonth:_b,...mine}=pending.local;
+  if(remote&&syncSame(mine,(({curYear,curMonth,rev,...rest})=>rest)(remote)))return syncClearPending(),false; // ya estaban en la base
+  const merged=remote?syncCombine(pending.base,pending.local,remote):pending.local;
+  if(!merged){
+    syncClearPending();
+    alert('Había cambios de este dispositivo sin subir que no se pudieron combinar con los de la base. Se cargó la versión guardada: revisá tus últimos cambios.');
+    return false;
+  }
+  syncApply(merged);curYear=merged.curYear??curYear;curMonth=merged.curMonth??curMonth;
+  return true;
+}
 
 // ── CLOUD SYNC ────────────────────────────────────────────────────────────────
 function withTimeout(promise, ms, label){
@@ -957,6 +996,7 @@ async function loadFromCloud(retryCount=0){
     syncBase = row && row.data ? syncClone(row.data) : null; // la última versión de la base que vio este dispositivo
     loadFailed = false;
     hideLoadErrorBanner();
+    if(syncRecoverPending(syncBase)){ save(); setTimeout(()=>setSyncStatus('Se recuperaron cambios que no se habían subido'),700); }
   }catch(e){
     console.error('Load error', e, 'retry', retryCount);
     if(retryCount < 2){
@@ -999,7 +1039,8 @@ function save(){
   }
   // Debounce cloud writes
   if(saveTimeout) clearTimeout(saveTimeout);
-  setSyncStatus(isOnline?'Guardando...':'Sin conexión · guardado local');
+  const kept = syncKeepPending(); // queda en este dispositivo hasta que la base lo confirme
+  setSyncStatus(isOnline?'Guardando...':kept?'Sin conexión · guardado en este dispositivo':'⚠️ Sin conexión · no cierres la app hasta recuperar señal');
   saveTimeout = setTimeout(flushSave, 600);
 }
 
