@@ -596,7 +596,7 @@ const INITIAL_ING = JSON.parse(JSON.stringify(ing));
 function resetAppState(){ // evita que datos en memoria de una sesión pasen a otra cuenta
   expenses=JSON.parse(JSON.stringify(BASE_EXPENSES));
   Object.keys(ing).forEach(k=>delete ing[k]); Object.assign(ing,JSON.parse(JSON.stringify(INITIAL_ING)));
-  nid=500; curYear=2026; curMonth=6; savings=savingsNew();
+  nid=500; curYear=2026; curMonth=6; savings=savingsNew(); syncBase=null;
 }
 
 // ── SUPABASE SETUP ───────────────────────────────────────────────────────────
@@ -722,6 +722,199 @@ async function checkSession(){
   }
 }
 
+// ── Sincronización entre dispositivos: combinar en vez de pisar ──
+// Igual que una planilla de Drive: antes de guardar se traen los datos de la base y se combinan
+// gasto por gasto, pago por pago y movimiento por movimiento con lo que cambiaste en este dispositivo.
+// syncBase es la última versión de la base que vio este dispositivo: sirve para saber qué cambió cada lado.
+let syncBase=null;
+const syncClone=v=>v===undefined?undefined:JSON.parse(JSON.stringify(v));
+const syncIsObj=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+// Comparación que no depende del orden de las claves (la base las devuelve ordenadas a su manera).
+const syncSort=v=>Array.isArray(v)?v.map(syncSort):syncIsObj(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,syncSort(v[k])])):v;
+const syncSame=(a,b)=>JSON.stringify(syncSort(a))===JSON.stringify(syncSort(b));
+// Valor final de un campo: si solo cambió un lado, gana ese lado; si cambiaron los dos, gana este dispositivo.
+const syncPick=(b,l,r)=>syncSame(l,b)?r:l;
+// Objetos planos (ingresos, TC por mes, etc.): se combinan clave por clave.
+function syncMerge(b,l,r){
+  if(!syncIsObj(l)||!syncIsObj(r)||(b!==undefined&&!syncIsObj(b)))return syncPick(b,l,r);
+  const out={};
+  for(const k of [...Object.keys(l),...Object.keys(r).filter(k=>!(k in l))]){
+    const v=syncMerge(b?.[k],l[k],r[k]);if(v!==undefined)out[k]=v;
+  }
+  return out;
+}
+// Listas con id (gastos, pagos, movimientos, cuentas): se combinan elemento por elemento.
+// Un elemento borrado de un lado y sin cambios del otro se borra; uno nuevo de cualquier lado se agrega.
+function syncMergeList(b,l,r,key,mergeItem=syncMerge){
+  const map=a=>new Map((Array.isArray(a)?a:[]).map(x=>[x?.[key],x]));
+  const B=map(b),L=map(l),R=map(r),out=[];
+  for(const id of [...L.keys(),...[...R.keys()].filter(k=>!L.has(k))]){
+    const bi=B.get(id),li=L.get(id),ri=R.get(id);
+    if(li===undefined){if(bi===undefined)out.push(ri);continue;} // nuevo del otro dispositivo, o borrado acá
+    if(ri===undefined){if(bi===undefined||!syncSame(li,bi))out.push(li);continue;} // nuevo acá, o borrado allá sin cambios acá
+    out.push(mergeItem(bi,li,ri));
+  }
+  return out;
+}
+function syncMergeExpense(b,l,r){
+  const strip=e=>{if(!syncIsObj(e))return e;const{payments,...rest}=e;return rest;};
+  const out=syncMerge(strip(b),strip(l),strip(r)),bp=b?.payments||{},lp=l.payments||{},rp=r.payments||{};
+  out.payments={};
+  for(const k of [...Object.keys(lp),...Object.keys(rp).filter(k=>!(k in lp))]){
+    const list=syncMergeList(bp[k],lp[k],rp[k],'pid');
+    if(list.length||(k in lp&&k in rp))out.payments[k]=list;
+  }
+  return out;
+}
+function syncMergeSavings(b,l,r){
+  if(!syncIsObj(l)||!syncIsObj(r))return syncPick(b,l,r);
+  const strip=s=>{if(!syncIsObj(s))return s;const{accounts,transactions,...rest}=s;return rest;};
+  return {...syncMerge(strip(b),strip(l),strip(r)),accounts:syncMergeList(b?.accounts,l.accounts,r.accounts,'id'),transactions:syncMergeList(b?.transactions,l.transactions,r.transactions,'id')};
+}
+// b: última versión vista en la base · l: este dispositivo · r: lo que hay hoy en la base.
+function mergeTrackerData(b,l,r){
+  b=b||{};
+  const out=syncMerge(b,l,r);
+  out.expenses=syncMergeList(b.expenses,l.expenses,r.expenses,'id',syncMergeExpense);
+  out.savings=syncMergeSavings(b.savings,l.savings,r.savings);
+  out.curYear=l.curYear;out.curMonth=l.curMonth; // el mes que mirás es de cada dispositivo
+  out.nid=Math.max(Number(l.nid)||0,Number(r.nid)||0);
+  return out;
+}
+// Ids que no chocan entre dispositivos: dos teléfonos que cargan un pago a la vez no reciben el mismo número.
+function syncNewId(){return Math.max(nid,Date.now()*1000+Math.floor(Math.random()*1000));}
+
+// Guardado combinado: trae la base, combina con lo de este dispositivo y guarda
+// solo si nadie guardó en el medio. Si otro dispositivo guardó, vuelve a combinar.
+class SyncAuthError extends Error{}
+async function syncRequest(path,options={}){
+  if(!currentToken) throw new Error('Sin token de sesión');
+  const res = await withTimeout(
+    fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...options,headers:{
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${currentToken}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      ...(options.headers||{})
+    }}),
+    10000, options.method?'guardar datos':'cargar datos'
+  );
+  if(res.status === 401) throw new SyncAuthError('Sesión vencida');
+  return res;
+}
+async function syncFetchRemote(){
+  const res = await syncRequest(`tracker_data?select=data&user_id=eq.${currentUser.id}`);
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const rows = await res.json();
+  return (Array.isArray(rows)&&rows[0]&&rows[0].data)||null;
+}
+// Escribe solo si la base sigue en la versión que leímos (remote). Devuelve false si otro dispositivo se adelantó.
+async function syncWrite(data,remote){
+  if(!remote){
+    const res = await syncRequest('tracker_data',{method:'POST',headers:{'Prefer':'return=minimal'},body:JSON.stringify({user_id:currentUser.id,data})});
+    if(res.status === 409) return false;
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    return true;
+  }
+  const rev = remote.rev==null?'data->>rev=is.null':`data->>rev=eq.${encodeURIComponent(remote.rev)}`;
+  const res = await syncRequest(`tracker_data?user_id=eq.${currentUser.id}&${rev}&select=user_id`,{method:'PATCH',headers:{'Prefer':'return=representation'},body:JSON.stringify({data})});
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const rows = await res.json();
+  return Array.isArray(rows)&&rows.length===1;
+}
+const syncLocal=()=>syncClone({expenses, ing, curYear, curMonth, nid, savings});
+function syncApply(d){
+  expenses = d.expenses||[];
+  Object.keys(ing).forEach(k=>delete ing[k]); Object.assign(ing, d.ing||{});
+  savings = savingsHydrate(d.savings);
+  nid = Math.max(nid, Number(d.nid)||0);
+}
+// Combina y valida; si los ahorros combinados no son válidos (p. ej. dos retiros que dejan la cuenta en negativo), devuelve null.
+function syncCombine(base,local,remote){
+  const merged = mergeTrackerData(base,local,remote);
+  try{ savingsHydrate(merged.savings); return merged; }catch(e){ console.error('Merge inválido', e); return null; }
+}
+function syncConflict(remote){
+  syncApply(remote); syncBase = syncClone(remote); render();
+  setSyncStatus('⚠️ Conflicto con otro dispositivo');
+  alert('Otro dispositivo cambió los mismos datos y no se pudieron combinar con tu último cambio. Se cargó la versión guardada: revisá y volvé a hacer ese cambio.');
+}
+let saveInFlight = false, saveQueued = false;
+async function flushSave(){
+  if(!currentUser || loadFailed) return;
+  if(saveInFlight){ saveQueued = true; return; }
+  saveInFlight = true; saveTimeout = null;
+  try{
+    for(let attempt=0;;attempt++){
+      if(attempt>=5) throw new Error('Demasiados guardados simultáneos');
+      const local = syncLocal(), remote = await syncFetchRemote();
+      let toWrite = local;
+      if(remote && !syncSame(remote, syncBase)){
+        toWrite = syncCombine(syncBase, local, remote);
+        if(!toWrite){ syncConflict(remote); return; }
+      }
+      const next = {...toWrite, rev:(Number(remote?.rev)||0)+1};
+      if(!await syncWrite(next, remote)) continue; // otro dispositivo guardó en el medio: volvemos a combinar
+      syncBase = syncClone(next);
+      // Lo que llegó de otro dispositivo se muestra acá, sin perder lo que hayas tocado mientras se guardaba.
+      const now = syncLocal(), touched = !syncSame(now, local), incoming = !syncSame(toWrite, local);
+      if(touched){ const again = syncCombine(local, now, next); if(again) syncApply(again); saveQueued = true; }
+      else if(incoming) syncApply(next);
+      if(incoming){ render(); setSyncStatus('Sincronizado ✓ · con cambios de otro dispositivo'); }
+      else setSyncStatus(isOnline?'Sincronizado ✓':'Sin conexión · guardado local');
+      break;
+    }
+    consecutiveAuthFailures = 0;
+    hideSessionExpiredBanner();
+  }catch(e){
+    if(e instanceof SyncAuthError){
+      // El token de acceso venció. Antes de reintentar sin fin (que antes fallaba silenciosamente
+      // para siempre, ver memoria del proyecto), probamos refrescar la sesión una vez.
+      consecutiveAuthFailures++;
+      if(consecutiveAuthFailures <= 2){
+        try{
+          const{data, error} = await sb.auth.refreshSession();
+          if(!error && data?.session){
+            currentToken = data.session.access_token;
+            setSyncStatus('Sesión renovada, reintentando...');
+            saveTimeout = setTimeout(flushSave, 500);
+            return;
+          }
+        }catch(refreshErr){
+          console.error('Refresh session error', refreshErr);
+        }
+      }
+      // No se pudo renovar (o ya lo intentamos): avisamos claramente y dejamos de reintentar en loop.
+      setSyncStatus('⚠️ Sesión vencida — no se está guardando');
+      showSessionExpiredBanner();
+      return;
+    }
+    console.error('Save error', e);
+    setSyncStatus('Sin conexión con el servidor — reintentando...');
+    saveTimeout = setTimeout(flushSave, 5000);
+  }finally{
+    saveInFlight = false;
+    if(saveQueued){ saveQueued = false; flushSave(); }
+  }
+}
+// Al volver a la app (otra pestaña, otra app en el celular), trae lo que hayan cambiado otros dispositivos.
+async function syncPull(){
+  if(!currentUser || loadFailed || saveInFlight || !isOnline) return;
+  if(saveTimeout){ clearTimeout(saveTimeout); return flushSave(); } // hay cambios sin guardar: se combinan al guardar
+  try{
+    const remote = await syncFetchRemote();
+    if(!remote || syncSame(remote, syncBase) || saveInFlight || saveTimeout) return;
+    const local = syncLocal(), merged = syncCombine(syncBase, local, remote);
+    if(!merged){ syncConflict(remote); return; }
+    syncApply(merged); syncBase = syncClone(remote); render();
+    setSyncStatus('Actualizado con cambios de otro dispositivo');
+    const{curYear:_y,curMonth:_m,...mine}=merged,{curYear:_ry,curMonth:_rm,...theirs}=remote;
+    if(!syncSame(mine, theirs)) save(); // quedaban cambios de este dispositivo sin subir
+  }catch(e){ console.error('Sync error', e); }
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') syncPull(); });
+window.addEventListener('focus', ()=>syncPull());
+
 // ── CLOUD SYNC ────────────────────────────────────────────────────────────────
 function withTimeout(promise, ms, label){
   return Promise.race([
@@ -761,6 +954,7 @@ async function loadFromCloud(retryCount=0){
       if(d.nid) nid = d.nid;
       savings = savingsHydrate(d.savings);
     }
+    syncBase = row && row.data ? syncClone(row.data) : null; // la última versión de la base que vio este dispositivo
     loadFailed = false;
     hideLoadErrorBanner();
   }catch(e){
@@ -825,57 +1019,6 @@ function hideSessionExpiredBanner(){
   document.getElementById('sessionExpiredBanner')?.remove();
 }
 
-async function flushSave(){
-  if(!currentUser || loadFailed) return;
-  const payload = {expenses, ing, curYear, curMonth, nid, savings};
-  try{
-    if(!currentToken) throw new Error('Sin token de sesión');
-    const url = `${SUPABASE_URL}/rest/v1/tracker_data?on_conflict=user_id`;
-    const res = await withTimeout(
-      fetch(url, {
-        method:'POST',
-        headers:{
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${currentToken}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify({user_id: currentUser.id, data: payload})
-      }),
-      10000, 'guardar datos'
-    );
-    if(res.status === 401){
-      // El token de acceso venció. Antes de reintentar sin fin (que antes fallaba silenciosamente
-      // para siempre, ver memoria del proyecto), probamos refrescar la sesión una vez.
-      consecutiveAuthFailures++;
-      if(consecutiveAuthFailures <= 2){
-        try{
-          const{data, error} = await sb.auth.refreshSession();
-          if(!error && data?.session){
-            currentToken = data.session.access_token;
-            setSyncStatus('Sesión renovada, reintentando...');
-            saveTimeout = setTimeout(flushSave, 500);
-            return;
-          }
-        }catch(refreshErr){
-          console.error('Refresh session error', refreshErr);
-        }
-      }
-      // No se pudo renovar (o ya lo intentamos): avisamos claramente y dejamos de reintentar en loop.
-      setSyncStatus('⚠️ Sesión vencida — no se está guardando');
-      showSessionExpiredBanner();
-      return;
-    }
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    consecutiveAuthFailures = 0;
-    hideSessionExpiredBanner();
-    setSyncStatus(isOnline?'Sincronizado ✓':'Sin conexión · guardado local');
-  }catch(e){
-    console.error('Save error', e);
-    setSyncStatus('Sin conexión con el servidor — reintentando...');
-    saveTimeout = setTimeout(flushSave, 5000);
-  }
-}
 
 
 // ── MONTH NAV ─────────────────────────────────────────────────────────────────
@@ -1000,7 +1143,8 @@ function addExpense(key){
   if(!name)return;
   const dur=document.getElementById(`af-${key}-dur`)?.value||'siempre';
   const durObj = dur==='siempre'?{type:'siempre'}:dur==='solo'?{type:'solo',startYear:curYear,startMonth:curMonth}:{type:'meses',count:3,startYear:curYear,startMonth:curMonth};
-  const e={id:nid++,name,amount:amt,type,owner,payments:{},dur:durObj};
+  const id=syncNewId(); nid=id+1;
+  const e={id,name,amount:amt,type,owner,payments:{},dur:durObj};
   if(type==='puntual'){
     e.totalCuotas=parseInt(document.getElementById(`af-${key}-cuotas`).value)||1;
     e.startYear=curYear; e.startMonth=curMonth;
@@ -1083,19 +1227,25 @@ function toggleDetail(id){
 }
 
 // Un pago y su retiro se validan juntos antes de modificar el estado.
+// Lo que elegiste en el formulario de pagos sobrevive a que la pantalla se redibuje (por ejemplo, al borrar otro pago).
+const paymentChoice={};
+const payChoice=id=>({source:'budget',ret:'1',account:'',...paymentChoice[id]});
 function paymentSourceSelect(id,source){
   if(!['budget','extra','savings'].includes(source))return;
+  paymentChoice[id]={...paymentChoice[id],source};
   document.getElementById('ps-'+id).value=source;
   document.querySelectorAll('#ps-options-'+id+' button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.source===source)));
   paymentSourceUpdate(id);
 }
 function paymentSourceUpdate(id){
+  paymentChoice[id]={...paymentChoice[id],account:document.getElementById('ps-account-'+id).value};
   const fromSavings=document.getElementById('ps-'+id).value==='savings';
   document.getElementById('ps-details-'+id).hidden=!fromSavings;
   const account=savingsAccount(document.getElementById('ps-account-'+id).value);
   document.getElementById('ps-usd-'+id).hidden=!fromSavings||account?.currency!=='USD';
 }
 function paymentReturnSelect(id,value){
+  paymentChoice[id]={...paymentChoice[id],ret:value};
   document.getElementById('ps-return-'+id).value=value;
   document.querySelectorAll('#ps-return-options-'+id+' button').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.return===value)));
 }
@@ -1112,7 +1262,7 @@ function recordExpensePayment(id,amount,date,note,who,source,accountId,usdAmount
   if(!Number.isSafeInteger(amount)||amount===0)throw Error('Ingresá un importe entero en guaraníes, distinto de cero.');
   if(!['budget','extra','savings'].includes(source))throw Error('Elegí el origen del pago.');
   const key=`${curYear}-${curMonth}`;
-  const payment={pid:nid,amount,date,note,who,extra:source==='extra',source};
+  const payment={pid:syncNewId(),amount,date,note,who,extra:source==='extra',source};
   let next=savings.transactions;
   if(source==='savings'){
     if(amount<=0)throw Error('Desde ahorros solo se pueden pagar importes positivos.');
@@ -1137,7 +1287,7 @@ function recordExpensePayment(id,amount,date,note,who,source,accountId,usdAmount
   }
   expense.payments=expense.payments||{};
   expense.payments[key]=[...(expense.payments[key]||[]),payment];
-  savings.transactions=next;nid++;
+  savings.transactions=next;nid=payment.pid+1;
   return payment;
 }
 function submitExpensePayment(id,complete){
@@ -1146,6 +1296,7 @@ function submitExpensePayment(id,complete){
     const amount=complete?mAmt(expense)-paidOf(expense,curYear,curMonth):Number(document.getElementById('pa-'+id).value);
     if(complete&&amount===0)return;
     recordExpensePayment(id,amount,document.getElementById('pd-'+id).value||savingsToday(),complete?'Pago completo':document.getElementById('pn-'+id).value.trim(),document.getElementById('pw-'+id).value,document.getElementById('ps-'+id).value,document.getElementById('ps-account-'+id).value,document.getElementById('ps-debit-'+id).value,document.getElementById('ps-return-'+id).value!=='0',document.getElementById('ps-dest-'+id)?.value||'',document.getElementById('ps-dest-usd-input-'+id)?.value||'');
+    delete paymentChoice[id]; // el próximo pago arranca de nuevo en Presupuesto mensual
     save();render(); // el detalle queda cerrado al registrar el pago
   }catch(error){paymentError(id,error.message);}
 }
@@ -1336,6 +1487,7 @@ function refundSubmit(event){
 
 // ── CARD HTML ─────────────────────────────────────────────────────────────────
 function cardHtml(e){
+  const pc=payChoice(e.id);
   const ma=mAmt(e), p=paidOf(e,curYear,curMonth), abs=Math.abs(ma);
   const pct=abs?Math.min(Math.round(Math.abs(p)/abs*100),100):0;
   const done=ma===0||(ma>0?p>=ma:p<=ma);
@@ -1391,22 +1543,22 @@ function cardHtml(e){
             <small>Al registrar el pago, el importe se suma a esa cuenta en Ahorros. El monto previsto ya resta de tu Disponible del mes.</small>
           </div>`:`<div class="payment-source">
             <span id="ps-label-${e.id}">Origen del pago</span>
-            <input type="hidden" id="ps-${e.id}" value="budget">
+            <input type="hidden" id="ps-${e.id}" value="${pc.source}">
             <div class="payment-source-options" id="ps-options-${e.id}" role="group" aria-labelledby="ps-label-${e.id}">
-              <button type="button" data-source="budget" aria-pressed="true" onclick="paymentSourceSelect(${e.id},'budget')">Presupuesto mensual</button>
-              <button type="button" data-source="extra" aria-pressed="false" onclick="paymentSourceSelect(${e.id},'extra')">Extrapresupuesto</button>
-              <button type="button" data-source="savings" aria-pressed="false" onclick="paymentSourceSelect(${e.id},'savings')">Desde ahorros</button>
+              <button type="button" data-source="budget" aria-pressed="${pc.source==='budget'}" onclick="paymentSourceSelect(${e.id},'budget')">Presupuesto mensual</button>
+              <button type="button" data-source="extra" aria-pressed="${pc.source==='extra'}" onclick="paymentSourceSelect(${e.id},'extra')">Extrapresupuesto</button>
+              <button type="button" data-source="savings" aria-pressed="${pc.source==='savings'}" onclick="paymentSourceSelect(${e.id},'savings')">Desde ahorros</button>
             </div>
           </div>`}
-          ${isSavingExpense(e)?'':`<div class="payment-savings" id="ps-details-${e.id}" hidden>
+          ${isSavingExpense(e)?'':`<div class="payment-savings" id="ps-details-${e.id}" ${pc.source==='savings'?'':'hidden'}>
             <div class="payment-return"><span id="ps-return-label-${e.id}">¿Lo vas a devolver a la cuenta?</span>
-              <input type="hidden" id="ps-return-${e.id}" value="1">
+              <input type="hidden" id="ps-return-${e.id}" value="${pc.ret}">
               <div class="payment-source-options" id="ps-return-options-${e.id}" role="group" aria-labelledby="ps-return-label-${e.id}">
-                <button type="button" data-return="1" aria-pressed="true" onclick="paymentReturnSelect(${e.id},'1')">Sí, lo devuelvo</button>
-                <button type="button" data-return="0" aria-pressed="false" onclick="paymentReturnSelect(${e.id},'0')">No, es gasto de ahorros</button>
+                <button type="button" data-return="1" aria-pressed="${pc.ret==='1'}" onclick="paymentReturnSelect(${e.id},'1')">Sí, lo devuelvo</button>
+                <button type="button" data-return="0" aria-pressed="${pc.ret==='0'}" onclick="paymentReturnSelect(${e.id},'0')">No, es gasto de ahorros</button>
               </div></div>
-            <label>¿De qué cuenta? <select id="ps-account-${e.id}" onchange="paymentSourceUpdate(${e.id})">${savingsActiveAccounts().map(a=>`<option value="${a.id}">${savingsEscape(a.name)}</option>`).join('')}</select></label>
-            <label id="ps-usd-${e.id}" hidden>Importe retirado en USD <input id="ps-debit-${e.id}" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Ej. 100,50"><small>El pago se registra en Gs.; indicá los USD que salieron de tu ahorro.</small></label>
+            <label>¿De qué cuenta? <select id="ps-account-${e.id}" onchange="paymentSourceUpdate(${e.id})">${savingsActiveAccounts().map(a=>`<option value="${a.id}"${a.id===pc.account?' selected':''}>${savingsEscape(a.name)}</option>`).join('')}</select></label>
+            <label id="ps-usd-${e.id}" ${pc.source==='savings'&&savingsAccount(pc.account)?.currency==='USD'?'':'hidden'}>Importe retirado en USD <input id="ps-debit-${e.id}" type="text" inputmode="decimal" enterkeyhint="done" placeholder="Ej. 100,50"><small>El pago se registra en Gs.; indicá los USD que salieron de tu ahorro.</small></label>
             <small>Descuenta del ahorro elegido, no del Disponible mensual. El retiro se registra automáticamente; si lo vas a devolver, queda una «Devolución a ahorros» entre los gastos del mes, que resta de tu Disponible.</small>
           </div>`}
           <p id="payment-error-${e.id}" class="payment-error" role="alert"></p>
