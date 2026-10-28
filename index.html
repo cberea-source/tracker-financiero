@@ -245,6 +245,7 @@
 .sv-tc{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:16px 0 4px}.sv-tc label{width:100%;font-size:12px;color:var(--text2)}
 .sv-tc input{flex:1;min-width:120px;max-width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:10px;font:inherit;font-size:16px}
 .ret-toggle{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
+.ret-toggle-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .ret-toggle button{background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:6px;padding:6px 12px;font:inherit;font-size:12px;cursor:pointer}
 @media(max-width:600px){.sv-totals,.sv-accounts{grid-template-columns:1fr}.sv-total strong{font-size:22px}.sv-account strong{font-size:13px}.sv-movement{padding:12px}.sv-button{min-height:44px}}
 
@@ -1185,17 +1186,40 @@ function savingsLinkedPayments(){
     const refunds=savings.transactions.filter(t=>t.type==='refund'&&t.paymentId===payment.pid);
     const refunded=refunds.reduce((s,t)=>s+t.amount,0),paidGs=refunds.reduce((s,t)=>s+(t.budgetGs||0),0);
     const waived=!!payment.refundWaived,pending=waived?0:Math.max(0,withdrawal.amount-refunded);
-    out.push({expense,key,payment,withdrawal,account,refunded,paidGs,waived,pending,pendingGs:pending>0?Math.max(0,payment.amount-paidGs):0});
+    // dueKey: mes cuyo Disponible absorbe lo pendiente. Es el del pago, salvo que lo pases a otro mes.
+    out.push({expense,key,dueKey:payment.refundMonth||key,payment,withdrawal,account,refunds,refunded,paidGs,waived,pending,pendingGs:pending>0?Math.max(0,payment.amount-paidGs):0});
   }
   return out;
 }
-// Devolución prevista de un mes: todos los pagos desde ahorros hechos ese mes que se van a devolver.
+const refundKeyNum=k=>{const[y,m]=k.split('-').map(Number);return y*12+m;};
+const refundKeyAdd=(k,d)=>{const n=refundKeyNum(k)+d;return `${Math.floor(n/12)}-${n%12}`;};
+const refundMonthName=k=>{const[y,m]=k.split('-').map(Number);return MONTHS_FULL[m].toLowerCase()+(y!==curYear?' '+y:'');};
+// Cada devolución registrada cuenta en el mes al que estaba asignado el pendiente cuando la hiciste.
+const refundBudgetKey=t=>t.budgetMonth||t.paymentMonth;
+// Devolución prevista de un mes: lo devuelto en ese mes más lo pendiente asignado a ese mes.
 // Es un gasto más del mes: resta del Disponible desde que se hace el pago, no recién cuando se devuelve.
 function savingsReturnsFor(y,m){
-  const items=savingsLinkedPayments().filter(x=>x.key===`${y}-${m}`);
+  const k=`${y}-${m}`;
+  const items=savingsLinkedPayments().filter(x=>x.key===k||x.dueKey===k||x.refunds.some(t=>refundBudgetKey(t)===k));
   const active=items.filter(x=>!x.waived);
-  const paid=active.reduce((s,x)=>s+x.paidGs,0),pending=active.reduce((s,x)=>s+x.pendingGs,0);
+  const paid=active.reduce((s,x)=>s+x.refunds.filter(t=>refundBudgetKey(t)===k).reduce((a,t)=>a+(t.budgetGs||0),0),0);
+  const pending=active.filter(x=>x.dueKey===k).reduce((s,x)=>s+x.pendingGs,0);
   return {items,paid,pending,total:paid+pending};
+}
+// Pasa lo pendiente de un pago a otro mes (nunca antes del mes del pago). Lo ya devuelto queda donde estaba.
+function setSavingsRefundMonth(expenseId,pid,key,target){
+  if(loadFailed)throw Error('Reintentá la carga de tus datos antes de modificar devoluciones.');
+  const item=savingsLinkedPayments().find(x=>x.expense.id===expenseId&&x.payment.pid===pid&&x.key===key);
+  if(!item)throw Error('No se encontró el pago desde ahorros.');
+  if(item.waived||item.pending<=0)throw Error('Este pago no tiene nada pendiente de devolver.');
+  if(!/^\d{4}-\d{1,2}$/.test(target)||refundKeyNum(target)<refundKeyNum(key))throw Error('No se puede pasar la devolución a un mes anterior al del pago.');
+  if(target===key)delete item.payment.refundMonth;else item.payment.refundMonth=target;
+}
+function moveAllSavingsRefunds(y,m){
+  const k=`${y}-${m}`,items=savingsLinkedPayments().filter(x=>x.dueKey===k&&!x.waived&&x.pending>0);
+  if(loadFailed)throw Error('Reintentá la carga de tus datos antes de modificar devoluciones.');
+  for(const x of items)setSavingsRefundMonth(x.expense.id,x.payment.pid,x.key,refundKeyAdd(k,1));
+  return items.length;
 }
 function recordSavingsRefund(expenseId,pid,key,amountText,date,note,budgetText){
   if(loadFailed)throw Error('Reintentá la carga de tus datos antes de registrar una devolución.');
@@ -1207,6 +1231,7 @@ function recordSavingsRefund(expenseId,pid,key,amountText,date,note,budgetText){
   if(amount>item.pending)throw Error('No podés devolver más de lo pendiente: '+savingsMoney(item.pending,currency)+'.');
   const budgetGs=currency==='USD'?(String(budgetText||'').trim()?savingsParse(budgetText,'PYG'):Math.max(1,Math.round(item.payment.amount*amount/item.withdrawal.amount))):amount;
   const transaction={id:crypto.randomUUID(),type:'refund',account:item.account.id,amount,date,note:String(note||'').trim().slice(0,300)||`Devolución de ${item.expense.name}`,expenseId,paymentId:pid,paymentMonth:key,budgetGs};
+  if(item.dueKey!==key)transaction.budgetMonth=item.dueKey;
   const next=[...savings.transactions,transaction];savingsValidate(next);savings.transactions=next;
   return transaction;
 }
@@ -1221,29 +1246,37 @@ function refundStatusText(item){
   const c=item.account.currency;
   return item.waived?'No se devuelve · gasto definitivo de ahorros':item.pending===0?'✓ Devuelto completo':item.refunded>0?`Devuelto ${refundMoney(item.refunded,c)} de ${refundMoney(item.withdrawal.amount,c)} · falta ${refundMoney(item.pending,c)}`:`Por devolver ${refundMoney(item.pending,c)}`;
 }
-function refundButtonsHtml(item){
-  const args=`${item.expense.id},${item.payment.pid},'${item.key}'`;
+// Acciones de un pago en la tarjeta del mes k. Si el pendiente está asignado a otro mes, solo se puede traer acá.
+function refundButtonsHtml(item,k){
+  const args=`${item.expense.id},${item.payment.pid},'${item.key}'`,movable=!item.waived&&item.pending>0;
+  if(item.dueKey!==k)return movable?`<button type="button" onclick="refundMove(${args},'${k}')">Traer a ${refundMonthName(k)}</button>`:'';
   return item.waived?`<button type="button" onclick="refundWaive(${args},false)">Voy a devolverlo</button>`
-    :`${item.pending>0?`<button type="button" class="primary" onclick="refundOpen(${args})">Devolver</button>`:''}${item.refunded===0?`<button type="button" onclick="refundWaive(${args},true)">No se devuelve</button>`:''}`;
+    :`${item.pending>0?`<button type="button" class="primary" onclick="refundOpen(${args})">Devolver</button>`:''}${movable?`<button type="button" onclick="refundMove(${args},'${refundKeyAdd(k,1)}')">Pasar a ${refundMonthName(refundKeyAdd(k,1))}</button>`:''}${movable&&item.key!==k?`<button type="button" onclick="refundMove(${args},'${refundKeyAdd(k,-1)}')">Volver a ${refundMonthName(refundKeyAdd(k,-1))}</button>`:''}${item.refunded===0?`<button type="button" onclick="refundWaive(${args},true)">No se devuelve</button>`:''}`;
+}
+// Dónde está asignado el pendiente, visto desde el mes k.
+function refundMonthText(item,k){
+  if(item.waived||item.pending<=0)return'';
+  return item.dueKey!==k?` · pasado a ${refundMonthName(item.dueKey)}`:item.key!==k?` · viene de ${refundMonthName(item.key)}`:'';
 }
 function refundControlsHtml(expenseId,pid,key){
   const item=savingsLinkedPayments().find(x=>x.expense.id===expenseId&&x.payment.pid===pid&&x.key===key);if(!item)return'';
-  return `<div class="pay-refund"><span>${refundStatusText(item)} · ${savingsEscape(item.account.name)} · se gestiona en «Devolución a ahorros», arriba en Gastos</span></div>`;
+  return `<div class="pay-refund"><span>${refundStatusText(item)}${refundMonthText(item,key)} · ${savingsEscape(item.account.name)} · se gestiona en «Devolución a ahorros», arriba en Gastos</span></div>`;
 }
 // Tarjeta "Devolución a ahorros" del mes en Gastos: un gasto más que resta del Disponible.
 let returnsOpen=false;
 function returnsToggle(){returnsOpen=!returnsOpen;render();}
 function returnsSectionHtml(){
-  const r=savingsReturnsFor(curYear,curMonth);if(!r.items.length)return'';
+  const r=savingsReturnsFor(curYear,curMonth),k=`${curYear}-${curMonth}`;if(!r.items.length)return'';
+  const due=r.items.filter(x=>x.dueKey===k&&x.pending>0),next=refundKeyAdd(k,1);
   const pct=r.total?Math.min(100,Math.round(r.paid/r.total*100)):0,done=r.total>0&&r.pending===0;
   const undoLines=x=>savings.transactions.filter(t=>t.type==='refund'&&t.paymentId===x.payment.pid).map(t=>`<div class="ret-undo">↩ ${refundMoney(t.amount,x.account.currency)} · ${t.date.split('-').reverse().join('/')} <button type="button" onclick="refundUndo('${t.id}')">Deshacer</button></div>`).join('');
-  const rows=r.items.map(x=>`<div class="ret-row${x.waived?' waived':''}"><div><strong>${savingsEscape(x.expense.name)}</strong><small>${savingsEscape(x.account.name)} · ${refundStatusText(x)}</small>${undoLines(x)}</div><div class="ret-actions">${refundButtonsHtml(x)}</div></div>`).join('');
+  const rows=r.items.map(x=>`<div class="ret-row${x.waived?' waived':''}"><div><strong>${savingsEscape(x.expense.name)}</strong><small>${savingsEscape(x.account.name)} · ${refundStatusText(x)}${refundMonthText(x,k)}</small>${undoLines(x)}</div><div class="ret-actions">${refundButtonsHtml(x,k)}</div></div>`).join('');
   return `<div class="section section-wide"><div class="section-head"><div class="section-title"><span class="badge badge-ret">Devolución</span><span>A tus cuentas de ahorro</span></div></div>
     <div class="expense-list"><div class="exp-wrap"><div class="exp-card ${done?'completed':''}">
       <div class="exp-main"><div class="exp-info"><div class="exp-name">Devolución a ahorros</div><div class="exp-meta"><span class="dur-badge">${r.items.length} pago${r.items.length>1?'s':''} desde ahorros</span></div></div>
         <div class="exp-amounts"><div class="exp-total">${fmt(r.total)}</div><div class="exp-paid-lbl">${r.paid>0?fmt(r.paid)+' devuelto':''}</div></div></div>
       ${r.total>0?`<div class="exp-progress"><div class="pbar"><div class="pfill ${done?'done':''}" style="width:${pct}%"></div></div><div class="plabels"><span>${pct}% devuelto</span><span>${done?'<span style="color:var(--green)">✓ Completo</span>':fmt(r.pending)+' pendiente'}</span></div></div>`:''}
-      <div class="ret-toggle"><span>${r.items.filter(x=>x.pending>0).length} pendiente${r.items.filter(x=>x.pending>0).length===1?'':'s'} de ${r.items.length}</span><button type="button" aria-expanded="${returnsOpen}" onclick="returnsToggle()">${returnsOpen?'Ocultar detalle':'Ver detalle'}</button></div>
+      <div class="ret-toggle"><span>${due.length} pendiente${due.length===1?'':'s'} de ${r.items.length}</span><span class="ret-toggle-actions">${due.length?`<button type="button" onclick="refundMoveAll()">Pasar pendientes a ${refundMonthName(next)}</button>`:''}<button type="button" aria-expanded="${returnsOpen}" onclick="returnsToggle()">${returnsOpen?'Ocultar detalle':'Ver detalle'}</button></span></div>
       ${returnsOpen?`<div class="ret-list">${rows}</div>`:''}
     </div></div></div></div>`;
 }
@@ -1263,6 +1296,16 @@ function refundWaive(expenseId,pid,key,waived){
   try{
     if(waived&&!confirm('¿Marcar este pago como "No se devuelve"? Quedará como gasto definitivo de ahorros y saldrá de la lista de pendientes.'))return;
     setSavingsRefundWaived(expenseId,pid,key,waived);save();render();
+  }catch(error){alert(error.message);}
+}
+function refundMove(expenseId,pid,key,target){
+  try{setSavingsRefundMonth(expenseId,pid,key,target);save();render();}catch(error){alert(error.message);}
+}
+function refundMoveAll(){
+  try{
+    const next=refundMonthName(refundKeyAdd(`${curYear}-${curMonth}`,1));
+    if(!confirm(`¿Pasar todo lo pendiente de devolver a ${next}? Deja de restar del Disponible de este mes y pasa a restar del de ${next}. Lo ya devuelto queda en este mes.`))return;
+    moveAllSavingsRefunds(curYear,curMonth);save();render();
   }catch(error){alert(error.message);}
 }
 let refundTarget=null;
